@@ -1,4 +1,4 @@
-#include "lib/raylib.h"
+#include <raylib.h>
 #include <stdio.h>
 
 #define CLAY_IMPLEMENTATION

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(advanced-electronic-signature)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Dependencies
 set(RAYLIB_VERSION 5.5)
 find_package(raylib ${RAYLIB_VERSION} QUIET) 

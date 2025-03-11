@@ -1,5 +1,6 @@
-# Build directory
+# Build directories
 build
+.cache
 
 # MacOS specific files
 .DS_Store
