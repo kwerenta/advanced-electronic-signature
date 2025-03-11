@@ -1,9 +1,9 @@
 #include "clay.h"
-#include "raylib.h"
-#include "raymath.h"
-#include "stdint.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <raylib.h>
+#include <raymath.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define CLAY_RECTANGLE_TO_RAYLIB_RECTANGLE(rectangle)                                                                  \
