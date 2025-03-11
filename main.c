@@ -5,9 +5,9 @@
 #include "lib/clay.h"
 #include "lib/clay_renderer_raylib.c"
 
-const Clay_Color COLOR_LIGHT = (Clay_Color){224, 215, 210, 255};
-const Clay_Color COLOR_RED = (Clay_Color){168, 66, 28, 255};
-const Clay_Color COLOR_ORANGE = (Clay_Color){225, 138, 50, 255};
+const Clay_Color COLOR_LIGHT = {224, 215, 210, 255};
+const Clay_Color COLOR_RED = {168, 66, 28, 255};
+const Clay_Color COLOR_ORANGE = {225, 138, 50, 255};
 
 void HandleClayErrors(Clay_ErrorData errorData) { printf("CLAY ERROR: %s", errorData.errorText.chars); }
 
