@@ -5,10 +5,6 @@
 #include "lib/clay.h"
 #include "clay-shared.h"
 
-const Clay_Color COLOR_LIGHT = {224, 215, 210, 255};
-const Clay_Color COLOR_RED = {168, 66, 28, 255};
-const Clay_Color COLOR_ORANGE = {225, 138, 50, 255};
-
 int main() {
   clay_init("Pin App");
 
