@@ -5,6 +5,11 @@
 #include <string.h>
 #include <stdio.h>
 
+/**
+ * @brief Checks whether the specified file has a correct extension (.pem by default)
+ * @param filename Full name of the file
+ * @return Boolean value indicating whether the file contains a key
+ */
 static uint8_t is_key(char *filename) {
   char* dot = strrchr(filename, '.');
 
