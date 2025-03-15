@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(advanced-electronic-signature)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_C_STANDARD 11)
 
 # Dependencies
 set(RAYLIB_VERSION 5.5)
@@ -21,20 +22,7 @@ if (NOT raylib_FOUND)
   endif()
 endif()
 
-set(CMAKE_C_STANDARD 11)
+add_subdirectory(common)
 
-add_executable(${PROJECT_NAME} main.c)
-
-target_link_libraries(${PROJECT_NAME} raylib)
-
-# Checks if not Windows and linnks appropriate libraries
-if (NOT WIN32)
-  target_link_libraries(${PROJECT_NAME} m)
-endif()
-
-# Checks if OSX and links appropriate frameworks (only required on MacOS)
-if (APPLE)
-  target_link_libraries(${PROJECT_NAME} "-framework IOKit")
-  target_link_libraries(${PROJECT_NAME} "-framework Cocoa")
-  target_link_libraries(${PROJECT_NAME} "-framework OpenGL")
-endif()
+add_subdirectory(signature-app)
+add_subdirectory(pin-app)
