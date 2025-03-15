@@ -60,7 +60,8 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
  * @brief Decrypts encrypted RSA private key and loads it into OpenSSL EVP_PKEY structure
  * @param private_key_file Path to encrypted private key file
  * @param pin PIN used to decrypt private key
- * @return EVP_PKEY strcutre with decrypted private key. It should be freed with EVP_PKEY_free() function
+ * @return EVP_PKEY strcutre with decrypted private key or NULL if failed to decrypt private key. EVP_PKEY should be
+ * freed with EVP_PKEY_free() function
  */
 EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin);
 

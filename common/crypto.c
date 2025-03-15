@@ -64,7 +64,6 @@ int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, con
   plaintext_len = len;
 
   if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
-    fprintf(stderr, "Decryption failed. Invalid pin?\n");
     EVP_CIPHER_CTX_free(ctx);
     return -1;
   }
