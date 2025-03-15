@@ -136,7 +136,7 @@ int main() {
             .cornerRadius = CLAY_CORNER_RADIUS(4),
             .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG}) {
         Clay_OnHover(handleCreateButtonInteraction, (intptr_t)&data);
-        CLAY_TEXT(CLAY_STRING("Create RSA key pair"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
+        CLAY_TEXT(CLAY_STRING("Generate RSA key pair"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
       }
     }
 
