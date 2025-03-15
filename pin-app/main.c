@@ -4,6 +4,11 @@
 #include <string.h>
 
 /**
+ *@brief Maxium length of PIN that user can enter
+ */
+#define MAX_PIN_LENGTH (16)
+
+/**
  * @brief Required by Clay library to work properly
  */
 #define CLAY_IMPLEMENTATION
@@ -32,7 +37,7 @@ Clay_BorderElementConfig get_pin_box_border(uint8_t curr_index, uint8_t index) {
 
 typedef struct {
   uint8_t curr_index;
-  char pin[16];
+  char pin[MAX_PIN_LENGTH + 1];
 } PinData;
 
 /**
@@ -47,7 +52,7 @@ void handle_controls(PinData *data) {
 
   if (key >= KEY_ZERO && key <= KEY_NINE) {
     data->pin[data->curr_index] = key;
-    if (data->curr_index + 1 < 16)
+    if (data->curr_index + 1 < MAX_PIN_LENGTH)
       data->curr_index++;
     return;
   }
@@ -107,7 +112,7 @@ int main() {
             .cornerRadius = CLAY_CORNER_RADIUS(4),
             .backgroundColor = {30, 39, 46, 255}}) {
 
-        for (uint8_t i = 0; i < 16; i++) {
+        for (uint8_t i = 0; i < MAX_PIN_LENGTH; i++) {
           CLAY({.id = CLAY_IDI_LOCAL("PinNumber", i),
                 .layout = {.sizing = {CLAY_SIZING_FIXED(36), CLAY_SIZING_FIXED(48)},
                            .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
