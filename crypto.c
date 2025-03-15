@@ -36,7 +36,7 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
     handleErrors();
 
   int len, ciphertext_len;
-  if (EVP_EncryptUpdate(ctx, ciphertext, &len, key, 512) != 1)
+  if (EVP_EncryptUpdate(ctx, ciphertext, &len, key, RSA_KEY_SIZE) != 1)
     handleErrors();
   ciphertext_len = len;
 
@@ -77,11 +77,6 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   unsigned char ciphertext[RSA_KEY_SIZE];
   int ciphertext_len = encrypt_private_key(plaintext_private_key, key, iv, ciphertext);
   BIO_free(bio_private);
-
-  private_key_fp = fopen(private_key_file, "wb");
-  if (!private_key_fp || PEM_write_PrivateKey(private_key_fp, pkey, NULL, NULL, 0, NULL, NULL) <= 0)
-    handleErrors();
-  fclose(private_key_fp);
 
   private_key_fp = fopen(private_key_file, "wb");
   if (!private_key_fp)
