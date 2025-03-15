@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-uint8_t find_private_key(const char *out_file) {
-  const char *path = "/Volumes/";
+uint8_t __find_private_key(const char *path, const char *out_file) {
   struct dirent *entry;
   struct stat statbuf;
 
@@ -36,4 +35,16 @@ uint8_t find_private_key(const char *out_file) {
 
   closedir(dir);
   return 0;
+}
+
+uint8_t find_private_key(const char *out_file) {
+#ifdef __APPLE__
+  return __find_private_key("/Volumes/", out_file);
+#else
+  uint8_t has_found = __find_private_key("/media/", out_file);
+  if (has_found == 1)
+    return 1;
+
+  return __find_private_key("/run/media/", out_file);
+#endif
 }
