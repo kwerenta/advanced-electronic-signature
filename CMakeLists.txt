@@ -21,11 +21,13 @@ if (NOT raylib_FOUND)
   endif()
 endif()
 
+find_package(OpenSSL REQUIRED)
+
 set(CMAKE_C_STANDARD 11)
 
-add_executable(${PROJECT_NAME} main.c)
+add_executable(${PROJECT_NAME} main.c crypto.c)
 
-target_link_libraries(${PROJECT_NAME} raylib)
+target_link_libraries(${PROJECT_NAME} raylib OpenSSL::Crypto OpenSSL::SSL)
 
 # Checks if not Windows and linnks appropriate libraries
 if (NOT WIN32)
