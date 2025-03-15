@@ -14,7 +14,9 @@ void handleErrors() {
   exit(1);
 }
 
-// Derive 32-byte key and 16-byte IV from a PIN
+/**
+ * There are some security concerns because the IV is based on the PIN. Generating IV randomly would fix the issue.
+ */
 void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   uint8_t hash[EVP_MAX_MD_SIZE];
   EVP_Digest(pin, strlen(pin), hash, NULL, EVP_sha256(), NULL);
@@ -26,7 +28,6 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   memcpy(iv, hash + AES_256_KEY_SIZE - AES_BLOCK_SIZE, AES_BLOCK_SIZE);
 }
 
-// AES-256-CBC Encryption
 int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
   EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
   if (!ctx)
@@ -49,7 +50,6 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
   return ciphertext_len;
 }
 
-// AES-256-CBC Decryption
 int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext) {
   EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
   if (!ctx)
@@ -74,6 +74,11 @@ int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, con
   return plaintext_len;
 }
 
+/**
+ * This function adds Initialization Vector at the beginning of encrypted private key file, but it isn't neccessary with
+ * current implementation of derive_key_iv(). Either it should be removed or derive_key_iv() function should be updated
+ * in the future.
+ */
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
   EVP_PKEY_CTX *ctx = NULL;
   EVP_PKEY *pkey = NULL;
@@ -87,7 +92,6 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   if (!ctx || EVP_PKEY_keygen_init(ctx) <= 0 || EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, RSA_KEY_SIZE) <= 0)
     handleErrors();
 
-  // Generate the RSA key pair
   if (EVP_PKEY_generate(ctx, &pkey) <= 0)
     handleErrors();
 
