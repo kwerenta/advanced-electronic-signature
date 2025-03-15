@@ -58,7 +58,8 @@ void handle_controls(PinData *data) {
   }
 
   if (key == KEY_BACKSPACE) {
-    if (data->curr_index - 1 >= 0)
+    if (data->curr_index - 1 >= 0 && (data->curr_index < MAX_PIN_LENGTH - 1 ||
+                                      (data->curr_index == MAX_PIN_LENGTH - 1 && data->pin[data->curr_index] == 0)))
       data->curr_index--;
     data->pin[data->curr_index] = 0;
     return;
