@@ -10,12 +10,30 @@
 #include "clay-shared.h"
 #include "lib/clay.h"
 
+/**
+ * @brief White color
+ */
+const Clay_Color COLOR_WHITE = {255, 255, 255, 255};
+/**
+ * @brief Color for button background
+ */
+const Clay_Color COLOR_BUTTON_BG = {5, 196, 107, 255};
+/**
+ * @brief Color for button background when it is hovered
+ */
+const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
+
 Clay_BorderElementConfig get_pin_box_border(uint8_t curr_index, uint8_t index) {
   if (curr_index != index)
     return (Clay_BorderElementConfig){};
 
   return (Clay_BorderElementConfig){.color = {15, 188, 249, 255}, .width = CLAY_BORDER_ALL(2)};
 }
+
+typedef struct {
+  uint8_t curr_index;
+  char pin[16];
+} PinData;
 
 /**
  * @brief Handles PIN input using keyboard
@@ -24,26 +42,38 @@ Clay_BorderElementConfig get_pin_box_border(uint8_t curr_index, uint8_t index) {
  *
  * @TODO PIN should be able to contain other characters than just digits
  */
-void handle_controls(uint8_t *curr_index, char pin[16]) {
+void handle_controls(PinData *data) {
   int key = GetKeyPressed();
 
   if (key >= KEY_ZERO && key <= KEY_NINE) {
-    pin[*curr_index] = key;
-    if (*curr_index + 1 < 16)
-      (*curr_index)++;
+    data->pin[data->curr_index] = key;
+    if (data->curr_index + 1 < 16)
+      data->curr_index++;
     return;
   }
 
   if (key == KEY_BACKSPACE) {
-    if (*curr_index - 1 >= 0)
-      (*curr_index)--;
-    pin[*curr_index] = 0;
+    if (data->curr_index - 1 >= 0)
+      data->curr_index--;
+    data->pin[data->curr_index] = 0;
     return;
   }
+}
 
-  if (key == KEY_ENTER && *curr_index > 0) {
-    generate_encrypted_RSA_keypair(pin, "encrypted_private_key.pem", "public_key.pem");
-    printf("Created RSA key pair with PIN: %s\n", pin);
+/**
+ * @brief Detects if button was clicked and tries to generate RSA key pair
+ */
+void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
+  PinData *data = (PinData *)user_data;
+
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    if (data->curr_index > 0) {
+      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.pem", "public_key.pem");
+      printf("Created RSA key pair with PIN: %s\n", data->pin);
+      return;
+    }
+
+    printf("PIN is too short\n");
   }
 }
 
@@ -55,13 +85,12 @@ int main() {
   SetTextureFilter(fonts[0].texture, TEXTURE_FILTER_BILINEAR);
   clay_set_measure_text(fonts);
 
-  char pin[16] = {};
-  uint8_t curr_pin_idx = 0;
+  PinData data = {.pin = {}, .curr_index = 0};
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
 
-    handle_controls(&curr_pin_idx, pin);
+    handle_controls(&data);
 
     Clay_BeginLayout();
 
@@ -83,20 +112,26 @@ int main() {
                 .layout = {.sizing = {CLAY_SIZING_FIXED(36), CLAY_SIZING_FIXED(48)},
                            .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
                 .cornerRadius = CLAY_CORNER_RADIUS(4),
-                .border = get_pin_box_border(curr_pin_idx, i),
+                .border = get_pin_box_border(data.curr_index, i),
                 .backgroundColor = {210, 218, 226, 255}}) {
 
-            if (pin[i] != 0) {
-              CLAY_TEXT(((Clay_String){.chars = &pin[i], .length = 1}),
+            if (data.pin[i] != 0) {
+              CLAY_TEXT(((Clay_String){.chars = &(data.pin)[i], .length = 1}),
                         CLAY_TEXT_CONFIG({.fontSize = 48, .textColor = {0, 0, 0, 255}}));
             }
           }
         }
       }
       CLAY_TEXT(CLAY_STRING("Enter PIN that will be used to encrypt private key"),
-                CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = {255, 255, 255, 255}}));
-      CLAY_TEXT(CLAY_STRING("Press enter to create encrypted private key"),
-                CLAY_TEXT_CONFIG({.fontSize = 28, .textColor = {255, 255, 255, 255}}));
+                CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
+
+      CLAY({.id = CLAY_ID("CreateButton"),
+            .layout = {.padding = {12, 16, 16, 12}},
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG}) {
+        Clay_OnHover(handleCreateButtonInteraction, (intptr_t)&data);
+        CLAY_TEXT(CLAY_STRING("Create RSA key pair"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
+      }
     }
 
     Clay_RenderCommandArray renderCommands = Clay_EndLayout();
