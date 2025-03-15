@@ -49,6 +49,31 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
   return ciphertext_len;
 }
 
+// AES-256-CBC Decryption
+int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext) {
+  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+  if (!ctx)
+    handleErrors();
+
+  if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, pin, iv) != 1)
+    handleErrors();
+
+  int len, plaintext_len;
+  if (EVP_DecryptUpdate(ctx, plaintext, &len, key, key_len) != 1)
+    handleErrors();
+  plaintext_len = len;
+
+  if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
+    fprintf(stderr, "Decryption failed. Invalid pin?\n");
+    EVP_CIPHER_CTX_free(ctx);
+    return -1;
+  }
+  plaintext_len += len;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return plaintext_len;
+}
+
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
   EVP_PKEY_CTX *ctx = NULL;
   EVP_PKEY *pkey = NULL;
@@ -93,4 +118,65 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
 
   EVP_PKEY_free(pkey);
   EVP_PKEY_CTX_free(ctx);
+}
+
+EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
+  FILE *fp = fopen(private_key_file, "rb");
+  if (!fp) {
+    perror("Failed to open encrypted private key file");
+    return NULL;
+  }
+
+  // Read IV
+  uint8_t iv[AES_BLOCK_SIZE];
+  if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
+    fprintf(stderr, "Failed to read IV\n");
+    fclose(fp);
+    return NULL;
+  }
+
+  // Read encrypted key data
+  fseek(fp, 0, SEEK_END);
+  long file_size = ftell(fp) - AES_BLOCK_SIZE;
+  fseek(fp, AES_BLOCK_SIZE, SEEK_SET);
+
+  uint8_t *ciphertext = malloc(file_size);
+  if (!ciphertext) {
+    fprintf(stderr, "Memory allocation error\n");
+    fclose(fp);
+    return NULL;
+  }
+
+  if (fread(ciphertext, 1, file_size, fp) != file_size) {
+    fprintf(stderr, "Failed to read encrypted private key\n");
+    fclose(fp);
+    free(ciphertext);
+    return NULL;
+  }
+  fclose(fp);
+
+  uint8_t key[AES_256_KEY_SIZE];
+  derive_key_iv(pin, key, iv);
+
+  uint8_t plaintext[8192];
+  int plaintext_len = decrypt_private_key(ciphertext, file_size, key, iv, plaintext);
+  free(ciphertext);
+
+  if (plaintext_len < 0) {
+    fprintf(stderr, "Private key decryption failed\n");
+    return NULL;
+  }
+
+  // Load decrypted private key
+  BIO *bio_private = BIO_new_mem_buf(plaintext, plaintext_len);
+  EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio_private, NULL, NULL, NULL);
+  BIO_free(bio_private);
+
+  if (!pkey) {
+    fprintf(stderr, "Failed to parse decrypted private key\n");
+    return NULL;
+  }
+
+  printf("Decryption successful! Private key loaded.\n");
+  return pkey;
 }
