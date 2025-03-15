@@ -21,7 +21,7 @@ uint8_t windows_search_for_key(const char *path, char *out_file) {
   WIN32_FIND_DATA find_data;
 
   strcpy(find_path, path);
-  strcat(find_path, "\\*");
+  strcat(find_path, "/*");
 
   HANDLE file_handle = FindFirstFileA(find_path, &find_data);
 
@@ -29,7 +29,9 @@ uint8_t windows_search_for_key(const char *path, char *out_file) {
 
   do {
     if (is_key(find_data.cFileName)) {
-      strcpy(out_file, find_data.cFileName);
+      strcpy(out_file, path);
+      strcat(out_file, "/");
+      strcat(out_file, find_data.cFileName);
       FindClose(file_handle);
       return 1;
     }
