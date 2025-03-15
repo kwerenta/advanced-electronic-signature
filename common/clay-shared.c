@@ -5,6 +5,10 @@
 #include <raylib.h>
 #include <stdint.h>
 
+/**
+ * @brief Callback that determines how Clay errors are handled
+ * @param errorData Data about error that occured. Passed by Clay library
+ */
 void HandleClayErrors(Clay_ErrorData errorData) { printf("CLAY ERROR: %s", errorData.errorText.chars); }
 
 void clay_init(const char *window_title) {
