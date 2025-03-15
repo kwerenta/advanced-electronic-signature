@@ -18,13 +18,7 @@ int main() {
   clay_set_measure_text(fonts);
 
   while (!WindowShouldClose()) {
-    Clay_SetLayoutDimensions((Clay_Dimensions){.width = GetScreenWidth(), .height = GetScreenHeight()});
-
-    Vector2 mousePosition = GetMousePosition();
-    Clay_SetPointerState((Clay_Vector2){mousePosition.x, mousePosition.y}, IsMouseButtonDown(0));
-
-    Vector2 scrollDelta = GetMouseWheelMoveV();
-    Clay_UpdateScrollContainers(true, (Clay_Vector2){scrollDelta.x, scrollDelta.y}, GetFrameTime());
+    clay_handle_movement();
 
     Clay_BeginLayout();
 

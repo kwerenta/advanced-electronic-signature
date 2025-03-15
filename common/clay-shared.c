@@ -24,3 +24,13 @@ void clay_render(Clay_RenderCommandArray renderCommands, Font *fonts) {
 }
 
 void clay_set_measure_text(Font *fonts) { Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts); }
+
+void clay_handle_movement() {
+  Clay_SetLayoutDimensions((Clay_Dimensions){.width = GetScreenWidth(), .height = GetScreenHeight()});
+
+  Vector2 mousePosition = GetMousePosition();
+  Clay_SetPointerState((Clay_Vector2){mousePosition.x, mousePosition.y}, IsMouseButtonDown(0));
+
+  Vector2 scrollDelta = GetMouseWheelMoveV();
+  Clay_UpdateScrollContainers(true, (Clay_Vector2){scrollDelta.x, scrollDelta.y}, GetFrameTime());
+}

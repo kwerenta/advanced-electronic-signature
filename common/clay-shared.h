@@ -9,4 +9,6 @@ void clay_render(Clay_RenderCommandArray render_commands, Font *fonts);
 
 void clay_set_measure_text(Font *fonts);
 
+void clay_handle_movement();
+
 #endif
