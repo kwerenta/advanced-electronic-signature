@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+/**
+ * @brief Internal version of find_private_key() function that is called with proper paths depending on operating system
+ * @param path Path where volumes will be searched
+ * @param out_file Buffer where the path to the found file will be stored
+ */
 uint8_t __find_private_key(const char *path, const char *out_file) {
   struct dirent *entry;
   struct stat statbuf;
@@ -37,6 +42,10 @@ uint8_t __find_private_key(const char *path, const char *out_file) {
   return 0;
 }
 
+/**
+ * Technically, UNIX version of this function returns almost all mounted volumes because it is impossible to reliably
+ * detect wheter volume is removeable
+ */
 uint8_t find_private_key(const char *out_file) {
 #ifdef __APPLE__
   return __find_private_key("/Volumes/", out_file);
