@@ -1,6 +1,9 @@
 #include <raylib.h>
 #include <stdio.h>
 
+/**
+ * @brief Required by Clay library to work properly
+ */
 #define CLAY_IMPLEMENTATION
 #include "clay-shared.h"
 #include "lib/clay.h"
