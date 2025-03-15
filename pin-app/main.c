@@ -60,7 +60,7 @@ void handle_controls(PinData *data) {
     key = GetCharPressed();
   }
 
-  if (IsKeyPressedRepeat(KEY_BACKSPACE)) {
+  if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
     if (data->curr_index - 1 >= 0 && (data->curr_index < MAX_PIN_LENGTH - 1 ||
                                       (data->curr_index == MAX_PIN_LENGTH - 1 && data->pin[data->curr_index] == 0)))
       data->curr_index--;
