@@ -5,7 +5,7 @@ build
 # MacOS specific files
 .DS_Store
 
-docs
+docs/html
 
 # clang configuration
 .clangd
