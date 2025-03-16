@@ -102,7 +102,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   uint8_t *plaintext_private_key;
   long plaintext_len = BIO_get_mem_data(bio_private, &plaintext_private_key);
 
-  unsigned char ciphertext[RSA_KEY_SIZE];
+  unsigned char ciphertext[RSA_KEY_SIZE + 64];
   int ciphertext_len = encrypt_private_key(plaintext_private_key, key, iv, ciphertext);
   BIO_free(bio_private);
 
