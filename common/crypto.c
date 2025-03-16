@@ -1,10 +1,14 @@
 #include "crypto.h"
+#include "psa/crypto_struct.h"
+#include "psa/crypto_types.h"
+#include "psa/crypto_values.h"
 
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
+#include <psa/crypto.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,6 +30,65 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
 
   // Last 16 bytes for the IV
   memcpy(iv, hash + AES_256_KEY_SIZE - AES_BLOCK_SIZE, AES_BLOCK_SIZE);
+}
+
+int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
+  psa_status_t status = psa_crypto_init();
+
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+  psa_algorithm_t alg = PSA_ALG_CBC_NO_PADDING;
+
+  psa_key_id_t key_id;
+  psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
+
+  psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_ENCRYPT);
+  psa_set_key_algorithm(&attr, alg);
+  psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
+  psa_set_key_bits(&attr, 256);
+  status = psa_import_key(&attr, pin, strlen((char *)pin), &key_id);
+
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+  psa_reset_key_attributes(&attr);
+
+  status = psa_cipher_encrypt_setup(&operation, key_id, alg);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  status = psa_cipher_set_iv(&operation, iv, strlen((char *)iv));
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  size_t len, ciphertext_len;
+  status = psa_cipher_update(&operation, key, RSA_KEY_SIZE, ciphertext, RSA_KEY_SIZE + 64, &len);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+  ciphertext_len = len;
+
+  status = psa_cipher_finish(&operation, ciphertext + ciphertext_len, RSA_KEY_SIZE + 64 - ciphertext_len, &len);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+  ciphertext_len += len;
+
+  psa_cipher_abort(&operation);
+  psa_destroy_key(key_id);
+  mbedtls_psa_crypto_free();
+  return ciphertext_len;
 }
 
 int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {

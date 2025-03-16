@@ -38,6 +38,7 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
  * @return Length of created ciphertext
  */
 int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext);
+int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext);
 /**
  * @brief Decrypts RSA private key using provided PIN
  * @param key Private key in form of cipher texted
