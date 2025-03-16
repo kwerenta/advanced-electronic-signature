@@ -18,6 +18,6 @@ uint8_t search_for_key(const char *path, char *out_file);
  * @param out_file Buffer where the path to the found file will be stored
  * @return Boolean value indicating wheter the file was found or not
  */
-uint8_t find_private_key(const char *out_file);
+uint8_t find_private_key(char *out_file);
 
 #endif

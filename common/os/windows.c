@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <windows.h>
 
-uint8_t find_private_key(const char *out_file) {
+uint8_t find_private_key(char *out_file) {
   DWORD drives = GetLogicalDrives();
   if (drives == 0) {
     printf("Failed to get drive list.\n");
