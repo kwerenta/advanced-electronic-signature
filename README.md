@@ -1,7 +1,6 @@
 # Advanced Electronic Signature
 
-Tool for Emulating the PAdES Qualified Electronic Signature
-This project is a software tool designed to fully emulate a qualified electronic signature process according to the PAdES (PDF Advanced Electronic Signature) standard. The primary goal is to sign PDF documents using a qualified electronic signature process that simulates all aspects—including hardware identification and secure key handling—required for a realistic signature emulation.
+This project is a software tool designed to emulate a qualified electronic signature process according to the PAdES (PDF Advanced Electronic Signature) standard.
 
 ## Applications
 
