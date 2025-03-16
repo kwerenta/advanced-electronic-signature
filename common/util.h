@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define KEY_FILE_EXT ".pem"
+
 /**
  * @brief Searches for a key file (.pem) in specified directory
  * @param path Path to the directory

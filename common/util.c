@@ -1,15 +1,19 @@
 #include "util.h"
+#include <raylib.h>
+#include <string.h>
 
-#if defined(_WIN32)
-
-#include "os/windows.h"
-
-#endif
-
+/**
+ * out_file buffer size should be 128 bytes
+ */
 uint8_t search_for_key(const char *path, char *out_file) {
-#if defined(_WIN32)
-  return windows_search_for_key(path, out_file);
-#else
-  return 0;
-#endif
+  FilePathList files = LoadDirectoryFilesEx(path, KEY_FILE_EXT, 0);
+
+  if (files.count == 0) {
+    UnloadDirectoryFiles(files);
+    return 0;
+  }
+
+  strncpy(out_file, files.paths[0], 128);
+  UnloadDirectoryFiles(files);
+  return 1;
 }
