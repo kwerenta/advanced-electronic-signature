@@ -38,10 +38,6 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
 }
 
 int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
-  enum {
-    block_size = PSA_BLOCK_CIPHER_BLOCK_LENGTH(PSA_KEY_TYPE_AES),
-  };
-
   psa_status_t status = psa_crypto_init();
 
   if (status != PSA_SUCCESS) {
@@ -50,7 +46,7 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
   }
 
   psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-  psa_algorithm_t alg = PSA_ALG_CBC_NO_PADDING;
+  psa_algorithm_t alg = PSA_ALG_CBC_PKCS7;
 
   psa_key_id_t key_id;
   psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
@@ -79,15 +75,21 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
     return 0;
   }
 
-  size_t len, ciphertext_len;
-  status = psa_cipher_update(&operation, key, block_size, ciphertext, block_size, &len);
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
-  }
-  ciphertext_len = len;
+  size_t key_len = strlen((char *)key);
+  size_t len = 0, ciphertext_len = 0;
 
-  status = psa_cipher_finish(&operation, ciphertext + ciphertext_len, block_size - ciphertext_len, &len);
+  while (key_len > 0) {
+    size_t chunk_size = key_len > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : key_len;
+    status = psa_cipher_update(&operation, key, chunk_size, ciphertext + ciphertext_len, AES_BLOCK_SIZE, &len);
+    if (status != PSA_SUCCESS)
+      return 0;
+
+    key += chunk_size;
+    key_len -= chunk_size;
+    ciphertext_len += len;
+  }
+
+  status = psa_cipher_finish(&operation, ciphertext + ciphertext_len, AES_BLOCK_SIZE, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -122,28 +124,30 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
   return ciphertext_len;
 }
 
-int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv,
+/**
+ * @TODO Fix decrypting private keys
+ */
+int mbed_decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
                              uint8_t *plaintext) {
-  enum {
-    block_size = PSA_BLOCK_CIPHER_BLOCK_LENGTH(PSA_KEY_TYPE_AES),
-  };
   psa_status_t status = psa_crypto_init();
+
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
   }
 
   psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-  psa_algorithm_t alg = PSA_ALG_CBC_NO_PADDING;
-  psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
+  psa_algorithm_t alg = PSA_ALG_CBC_PKCS7;
 
   psa_key_id_t key_id;
+  psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
+
   psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_DECRYPT);
   psa_set_key_algorithm(&attr, alg);
   psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
   psa_set_key_bits(&attr, 256);
-
   status = psa_import_key(&attr, pin, AES_256_KEY_SIZE, &key_id);
+
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -161,22 +165,25 @@ int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin
     handleErrors();
     return 0;
   }
+  size_t len = 0, plaintext_len = 0;
+  const size_t block_size = AES_BLOCK_SIZE;
 
-  size_t len, plaintext_len;
+  while (ciphertext_len > 0) {
+    size_t chunk_size = ciphertext_len > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : ciphertext_len;
+    status = psa_cipher_update(&operation, ciphertext, chunk_size, plaintext + plaintext_len, AES_BLOCK_SIZE, &len);
+    if (status != PSA_SUCCESS)
+      return 0;
 
-  status = psa_cipher_update(&operation, key, key_len, plaintext, block_size, &len);
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
+    ciphertext += chunk_size;
+    ciphertext_len -= chunk_size;
+    plaintext_len += len;
   }
 
-  plaintext_len = len;
-  status = psa_cipher_finish(&operation, plaintext + len, block_size - len, &len);
+  status = psa_cipher_finish(&operation, plaintext + plaintext_len, AES_BLOCK_SIZE, &len);
   if (status != PSA_SUCCESS) {
-    handleErrors();
+    psa_cipher_abort(&operation);
     return 0;
   }
-
   plaintext_len += len;
 
   psa_cipher_abort(&operation);
@@ -288,8 +295,8 @@ void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_ke
     handleErrors();
   }
 
-  uint8_t priv_key[RSA_KEY_SIZE * 2];
-  uint8_t enc_priv_key[RSA_KEY_SIZE * 2];
+  uint8_t priv_key[RSA_KEY_SIZE * 2] = {0};
+  uint8_t enc_priv_key[RSA_KEY_SIZE * 2] = {0};
   uint8_t pub_key[RSA_KEY_SIZE * 2];
   FILE *private_key_file_fp = fopen(private_key_file, "wb");
   if (private_key_file_fp) {
@@ -412,9 +419,10 @@ EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const 
 
   uint8_t plaintext[8192] = {0};
   int plaintext_len = mbed_decrypt_private_key(ciphertext, file_size, key, iv, plaintext);
+  printf("PLAIN %d\n%s\n", plaintext_len, plaintext);
 
   mbedtls_pk_context key_ctx;
-  int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len, NULL, 0, NULL, NULL);
+  int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
     handleErrors();
     return NULL;
