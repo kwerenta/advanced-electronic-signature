@@ -27,14 +27,41 @@ void handleErrors() {
  * There are some security concerns because the IV is based on the PIN. Generating IV randomly would fix the issue.
  */
 void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
-  uint8_t hash[EVP_MAX_MD_SIZE];
-  EVP_Digest(pin, strlen(pin), hash, NULL, EVP_sha256(), NULL);
+  psa_status_t status = psa_crypto_init();
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+  }
+
+  uint8_t hash[PSA_HASH_MAX_SIZE];
+  psa_algorithm_t alg = PSA_ALG_SHA_256;
+  psa_hash_operation_t operation = PSA_HASH_OPERATION_INIT;
+
+  status = psa_hash_setup(&operation, alg);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+  }
+
+  status = psa_hash_update(&operation, (const uint8_t *)pin, strlen(pin));
+  if (status != PSA_SUCCESS) {
+    psa_hash_abort(&operation);
+    handleErrors();
+  }
+
+  size_t hash_length;
+  status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, &hash_length);
+  if (status != PSA_SUCCESS) {
+    psa_hash_abort(&operation);
+    handleErrors();
+  }
 
   // First 32 bytes for the key
   memcpy(key, hash, AES_256_KEY_SIZE);
 
   // Last 16 bytes for the IV
   memcpy(iv, hash + AES_256_KEY_SIZE - AES_BLOCK_SIZE, AES_BLOCK_SIZE);
+
+  psa_hash_abort(&operation);
+  mbedtls_psa_crypto_free();
 }
 
 int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
