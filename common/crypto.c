@@ -287,6 +287,7 @@ void decrypt_and_load_private_key(const char *private_key_file, const char *pin)
   decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
+  mbedtls_pk_init(&key_ctx);
   int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
     printf("Failed to load private key\n");
