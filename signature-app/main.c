@@ -14,6 +14,14 @@ const Clay_Color COLOR_LIGHT = {224, 215, 210, 255};
 const Clay_Color COLOR_RED = {168, 66, 28, 255};
 const Clay_Color COLOR_ORANGE = {225, 138, 50, 255};
 const Clay_Color COLOR_BACKGROUND = {72, 84, 96, 255};
+const Clay_Color COLOR_BUTTON_BG = {5, 196, 107, 255};
+const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
+
+
+void handleBrowseButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
+    printf("File browsing placeholder");
+}
 
 /**
  * @brief Creates layout for the app when no pendrives containing key files has been found.
@@ -48,6 +56,13 @@ void layout_detected(const char *key_file) {
               CLAY_TEXT_CONFIG({.fontSize = 26, .textColor = {255, 255, 255, 255}}));
     CLAY_TEXT(((Clay_String){.chars = key_file, .length = len}),
               CLAY_TEXT_CONFIG({.fontSize = 26, .textColor = {255, 255, 255, 255}}));
+    CLAY({.id = CLAY_ID("BrowseButton"),
+          .layout = {.padding = {12, 16, 16, 12}},
+          .cornerRadius = CLAY_CORNER_RADIUS(4),
+          .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG}) {
+      Clay_OnHover(handleBrowseButtonInteraction, (intptr_t)0); // TODO - pass real user data here
+      CLAY_TEXT(CLAY_STRING("Select PDF file"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = {255, 255, 255, 255}}));
+    }
   }
 }
 
