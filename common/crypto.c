@@ -124,11 +124,8 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
   return ciphertext_len;
 }
 
-/**
- * @TODO Fix decrypting private keys
- */
 int mbed_decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
-                             uint8_t *plaintext) {
+                             uint8_t *plaintext, size_t *plaintext_len) {
   psa_status_t status = psa_crypto_init();
 
   if (status != PSA_SUCCESS) {
@@ -165,32 +162,28 @@ int mbed_decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, cons
     handleErrors();
     return 0;
   }
-  size_t len = 0, plaintext_len = 0;
-  const size_t block_size = AES_BLOCK_SIZE;
+  size_t len = 0, total_len = 0;
 
-  while (ciphertext_len > 0) {
-    size_t chunk_size = ciphertext_len > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : ciphertext_len;
-    status = psa_cipher_update(&operation, ciphertext, chunk_size, plaintext + plaintext_len, AES_BLOCK_SIZE, &len);
-    if (status != PSA_SUCCESS)
-      return 0;
-
-    ciphertext += chunk_size;
-    ciphertext_len -= chunk_size;
-    plaintext_len += len;
-  }
-
-  status = psa_cipher_finish(&operation, plaintext + plaintext_len, AES_BLOCK_SIZE, &len);
+  status = psa_cipher_update(&operation, ciphertext, ciphertext_len, plaintext, *plaintext_len, &len);
   if (status != PSA_SUCCESS) {
     psa_cipher_abort(&operation);
     return 0;
   }
-  plaintext_len += len;
+  total_len = len;
+
+  status = psa_cipher_finish(&operation, plaintext + total_len, *plaintext_len - total_len, &len);
+  if (status != PSA_SUCCESS) {
+    psa_cipher_abort(&operation);
+    return 0;
+  }
+  total_len += len;
+  *plaintext_len = total_len;
 
   psa_cipher_abort(&operation);
   psa_destroy_key(key_id);
   mbedtls_psa_crypto_free();
 
-  return plaintext_len;
+  return 1;
 }
 
 int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext) {
@@ -418,13 +411,15 @@ EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const 
   derive_key_iv(pin, key, iv);
 
   uint8_t plaintext[8192] = {0};
-  int plaintext_len = mbed_decrypt_private_key(ciphertext, file_size, key, iv, plaintext);
-  printf("PLAIN %d\n%s\n", plaintext_len, plaintext);
+  size_t plaintext_len = 8192;
+  mbed_decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
   int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
-    handleErrors();
+    printf("Failed to load private key\n");
+    free(ciphertext);
+    mbedtls_pk_free(&key_ctx);
     return NULL;
   }
 
