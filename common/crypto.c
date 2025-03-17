@@ -1,8 +1,13 @@
 #include "crypto.h"
+#include "mbedtls/entropy.h"
 #include "psa/crypto_struct.h"
 #include "psa/crypto_types.h"
 #include "psa/crypto_values.h"
 
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/error.h>
+#include <mbedtls/pk.h>
+#include <mbedtls/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
@@ -33,6 +38,10 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
 }
 
 int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
+  enum {
+    block_size = PSA_BLOCK_CIPHER_BLOCK_LENGTH(PSA_KEY_TYPE_AES),
+  };
+
   psa_status_t status = psa_crypto_init();
 
   if (status != PSA_SUCCESS) {
@@ -50,7 +59,7 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
   psa_set_key_algorithm(&attr, alg);
   psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
   psa_set_key_bits(&attr, 256);
-  status = psa_import_key(&attr, pin, strlen((char *)pin), &key_id);
+  status = psa_import_key(&attr, pin, AES_256_KEY_SIZE, &key_id);
 
   if (status != PSA_SUCCESS) {
     handleErrors();
@@ -71,14 +80,14 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
   }
 
   size_t len, ciphertext_len;
-  status = psa_cipher_update(&operation, key, RSA_KEY_SIZE, ciphertext, RSA_KEY_SIZE + 64, &len);
+  status = psa_cipher_update(&operation, key, block_size, ciphertext, block_size, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
   }
   ciphertext_len = len;
 
-  status = psa_cipher_finish(&operation, ciphertext + ciphertext_len, RSA_KEY_SIZE + 64 - ciphertext_len, &len);
+  status = psa_cipher_finish(&operation, ciphertext + ciphertext_len, block_size - ciphertext_len, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -245,6 +254,58 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
 
   EVP_PKEY_free(pkey);
   EVP_PKEY_CTX_free(ctx);
+}
+
+void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
+  uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
+  derive_key_iv(pin, key, iv);
+
+  int ret;
+  mbedtls_pk_context key_ctx;
+  mbedtls_entropy_context entropy = {0};
+  mbedtls_ctr_drbg_context rng_ctx = {0};
+  const char *seed = "rsa_gen";
+
+  mbedtls_pk_init(&key_ctx);
+  mbedtls_entropy_init(&entropy);
+  mbedtls_ctr_drbg_init(&rng_ctx);
+
+  ret = mbedtls_ctr_drbg_seed(&rng_ctx, mbedtls_entropy_func, &entropy, (const uint8_t *)seed, strlen(seed));
+  if (ret != 0) {
+    handleErrors();
+  }
+
+  ret = mbedtls_pk_setup(&key_ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
+  if (ret != 0) {
+    handleErrors();
+  }
+
+  ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(key_ctx), mbedtls_ctr_drbg_random, &rng_ctx, RSA_KEY_SIZE, 65537);
+  if (ret != 0) {
+    handleErrors();
+  }
+
+  uint8_t priv_key[RSA_KEY_SIZE * 2];
+  uint8_t enc_priv_key[RSA_KEY_SIZE * 2];
+  uint8_t pub_key[RSA_KEY_SIZE * 2];
+  FILE *private_key_file_fp = fopen(private_key_file, "wb");
+  if (private_key_file_fp) {
+    mbedtls_pk_write_key_pem(&key_ctx, priv_key, RSA_KEY_SIZE * 2);
+    int key_len = mbed_encrypt_private_key(priv_key, key, iv, enc_priv_key);
+    fwrite(enc_priv_key, 1, key_len, private_key_file_fp);
+    fclose(private_key_file_fp);
+  }
+
+  FILE *public_key_fp = fopen(public_key_file, "wb");
+  if (public_key_fp) {
+    mbedtls_pk_write_pubkey_pem(&key_ctx, pub_key, RSA_KEY_SIZE * 2);
+    fwrite(pub_key, 1, strlen((char *)pub_key), public_key_fp);
+    fclose(public_key_fp);
+  }
+
+  mbedtls_pk_free(&key_ctx);
+  mbedtls_entropy_free(&entropy);
+  mbedtls_ctr_drbg_free(&rng_ctx);
 }
 
 EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin) {

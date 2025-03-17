@@ -59,6 +59,7 @@ int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin
  * @param public_key_file Path to file where public key will be stored
  */
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file);
+void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file);
 /**
  * @brief Decrypts encrypted RSA private key and loads it into OpenSSL EVP_PKEY structure
  * @param private_key_file Path to encrypted private key file
