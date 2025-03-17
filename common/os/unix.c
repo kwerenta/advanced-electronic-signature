@@ -15,7 +15,6 @@ uint8_t __find_private_key(const char *path, const char *out_file) {
 
   DIR *dir = opendir(path);
   if (!dir) {
-    perror("opendir");
     return 0;
   }
 
@@ -46,7 +45,7 @@ uint8_t __find_private_key(const char *path, const char *out_file) {
  * Technically, UNIX version of this function returns almost all mounted volumes because it is impossible to reliably
  * detect wheter volume is removeable
  */
-uint8_t find_private_key(const char *out_file) {
+uint8_t find_private_key(char *out_file) {
 #ifdef __APPLE__
   return __find_private_key("/Volumes/", out_file);
 #else
