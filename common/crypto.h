@@ -49,6 +49,8 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
  * @return Length of created plaintext
  */
 int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext);
+int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv,
+                             uint8_t *plaintext);
 
 /**
  * @brief Generates and saves RSA key pair where private key is encrypted

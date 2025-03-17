@@ -64,7 +64,7 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
     return 0;
   }
 
-  status = psa_cipher_set_iv(&operation, iv, strlen((char *)iv));
+  status = psa_cipher_set_iv(&operation, iv, AES_BLOCK_SIZE);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -111,6 +111,67 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
   EVP_CIPHER_CTX_free(ctx);
 
   return ciphertext_len;
+}
+
+int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv,
+                             uint8_t *plaintext) {
+  psa_status_t status = psa_crypto_init();
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+  psa_algorithm_t alg = PSA_ALG_CBC_NO_PADDING;
+  psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
+
+  psa_key_id_t key_id;
+  psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_DECRYPT);
+  psa_set_key_algorithm(&attr, alg);
+  psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
+  psa_set_key_bits(&attr, 256);
+
+  status = psa_import_key(&attr, pin, strlen((char *)pin), &key_id);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+  psa_reset_key_attributes(&attr);
+
+  status = psa_cipher_decrypt_setup(&operation, key_id, alg);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  status = psa_cipher_set_iv(&operation, iv, AES_BLOCK_SIZE);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  size_t len, plaintext_len;
+
+  status = psa_cipher_update(&operation, key, key_len, plaintext, RSA_KEY_SIZE + 64, &len);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  plaintext_len = len;
+  status = psa_cipher_finish(&operation, plaintext + len, RSA_KEY_SIZE + 64 - len, &len);
+  if (status != PSA_SUCCESS) {
+    handleErrors();
+    return 0;
+  }
+
+  plaintext_len += len;
+
+  psa_cipher_abort(&operation);
+  psa_destroy_key(key_id);
+  mbedtls_psa_crypto_free();
+
+  return plaintext_len;
 }
 
 int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext) {
