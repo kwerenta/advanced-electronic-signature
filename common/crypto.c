@@ -64,7 +64,7 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   mbedtls_psa_crypto_free();
 }
 
-int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
+int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
   psa_status_t status = psa_crypto_init();
 
   if (status != PSA_SUCCESS) {
@@ -129,30 +129,8 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
   return ciphertext_len;
 }
 
-int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext) {
-  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-  if (!ctx)
-    handleErrors();
-
-  if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, pin, iv) != 1)
-    handleErrors();
-
-  int len, ciphertext_len;
-  if (EVP_EncryptUpdate(ctx, ciphertext, &len, key, RSA_KEY_SIZE) != 1)
-    handleErrors();
-  ciphertext_len = len;
-
-  if (EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1)
-    handleErrors();
-  ciphertext_len += len;
-
-  EVP_CIPHER_CTX_free(ctx);
-
-  return ciphertext_len;
-}
-
-int mbed_decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
-                             uint8_t *plaintext, size_t *plaintext_len) {
+int decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
+                        uint8_t *plaintext, size_t *plaintext_len) {
   psa_status_t status = psa_crypto_init();
 
   if (status != PSA_SUCCESS) {
@@ -213,80 +191,12 @@ int mbed_decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, cons
   return 1;
 }
 
-int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext) {
-  EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-  if (!ctx)
-    handleErrors();
-
-  if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, pin, iv) != 1)
-    handleErrors();
-
-  int len, plaintext_len;
-  if (EVP_DecryptUpdate(ctx, plaintext, &len, key, key_len) != 1)
-    handleErrors();
-  plaintext_len = len;
-
-  if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
-    EVP_CIPHER_CTX_free(ctx);
-    return -1;
-  }
-  plaintext_len += len;
-
-  EVP_CIPHER_CTX_free(ctx);
-  return plaintext_len;
-}
-
 /**
  * This function adds Initialization Vector at the beginning of encrypted private key file, but it isn't neccessary with
  * current implementation of derive_key_iv(). Either it should be removed or derive_key_iv() function should be updated
  * in the future.
  */
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
-  EVP_PKEY_CTX *ctx = NULL;
-  EVP_PKEY *pkey = NULL;
-  FILE *private_key_fp = NULL, *public_key_fp = NULL;
-
-  uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
-  derive_key_iv(pin, key, iv);
-
-  // Create a context for key generation
-  ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
-  if (!ctx || EVP_PKEY_keygen_init(ctx) <= 0 || EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, RSA_KEY_SIZE) <= 0)
-    handleErrors();
-
-  if (EVP_PKEY_generate(ctx, &pkey) <= 0)
-    handleErrors();
-
-  // Convert private key to PEM format (plaintext)
-  BIO *bio_private = BIO_new(BIO_s_mem());
-  if (!bio_private || PEM_write_bio_PrivateKey(bio_private, pkey, NULL, NULL, 0, NULL, NULL) <= 0)
-    handleErrors();
-
-  uint8_t *plaintext_private_key;
-  long plaintext_len = BIO_get_mem_data(bio_private, &plaintext_private_key);
-
-  unsigned char ciphertext[RSA_KEY_SIZE];
-  int ciphertext_len = encrypt_private_key(plaintext_private_key, key, iv, ciphertext);
-  BIO_free(bio_private);
-
-  private_key_fp = fopen(private_key_file, "wb");
-  if (!private_key_fp)
-    handleErrors();
-  // Store IV at the beginning
-  fwrite(iv, 1, AES_BLOCK_SIZE, private_key_fp);
-  fwrite(ciphertext, 1, ciphertext_len, private_key_fp);
-  fclose(private_key_fp);
-
-  public_key_fp = fopen(public_key_file, "wb");
-  if (!public_key_fp || PEM_write_PUBKEY(public_key_fp, pkey) <= 0)
-    handleErrors();
-  fclose(public_key_fp);
-
-  EVP_PKEY_free(pkey);
-  EVP_PKEY_CTX_free(ctx);
-}
-
-void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
   uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
   derive_key_iv(pin, key, iv);
 
@@ -321,7 +231,7 @@ void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_ke
   FILE *private_key_file_fp = fopen(private_key_file, "wb");
   if (private_key_file_fp) {
     mbedtls_pk_write_key_pem(&key_ctx, priv_key, RSA_KEY_SIZE * 2);
-    int key_len = mbed_encrypt_private_key(priv_key, key, iv, enc_priv_key);
+    int key_len = encrypt_private_key(priv_key, key, iv, enc_priv_key);
     fwrite(enc_priv_key, 1, key_len, private_key_file_fp);
     fclose(private_key_file_fp);
   }
@@ -338,72 +248,11 @@ void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_ke
   mbedtls_ctr_drbg_free(&rng_ctx);
 }
 
-EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
+void decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
   FILE *fp = fopen(private_key_file, "rb");
   if (!fp) {
     perror("Failed to open encrypted private key file");
-    return NULL;
-  }
-
-  // Read IV
-  uint8_t iv[AES_BLOCK_SIZE];
-  if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
-    fprintf(stderr, "Failed to read IV\n");
-    fclose(fp);
-    return NULL;
-  }
-
-  // Read encrypted key data
-  fseek(fp, 0, SEEK_END);
-  long file_size = ftell(fp) - AES_BLOCK_SIZE;
-  fseek(fp, AES_BLOCK_SIZE, SEEK_SET);
-
-  uint8_t *ciphertext = malloc(file_size);
-  if (!ciphertext) {
-    fprintf(stderr, "Memory allocation error\n");
-    fclose(fp);
-    return NULL;
-  }
-
-  if (fread(ciphertext, 1, file_size, fp) != file_size) {
-    fprintf(stderr, "Failed to read encrypted private key\n");
-    fclose(fp);
-    free(ciphertext);
-    return NULL;
-  }
-  fclose(fp);
-
-  uint8_t key[AES_256_KEY_SIZE];
-  derive_key_iv(pin, key, iv);
-
-  uint8_t plaintext[8192];
-  int plaintext_len = decrypt_private_key(ciphertext, file_size, key, iv, plaintext);
-  free(ciphertext);
-
-  if (plaintext_len < 0) {
-    fprintf(stderr, "Private key decryption failed\n");
-    return NULL;
-  }
-
-  // Load decrypted private key
-  BIO *bio_private = BIO_new_mem_buf(plaintext, plaintext_len);
-  EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio_private, NULL, NULL, NULL);
-  BIO_free(bio_private);
-
-  if (!pkey) {
-    fprintf(stderr, "Failed to parse decrypted private key\n");
-    return NULL;
-  }
-
-  printf("Decryption successful! Private key loaded.\n");
-  return pkey;
-}
-
-EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
-  FILE *fp = fopen(private_key_file, "rb");
-  if (!fp) {
-    perror("Failed to open encrypted private key file");
-    return NULL;
+    return;
   }
 
   // Read IV
@@ -423,14 +272,14 @@ EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const 
   if (!ciphertext) {
     fprintf(stderr, "Memory allocation error\n");
     fclose(fp);
-    return NULL;
+    return;
   }
 
   if (fread(ciphertext, 1, file_size, fp) != file_size) {
     fprintf(stderr, "Failed to read encrypted private key\n");
     fclose(fp);
     free(ciphertext);
-    return NULL;
+    return;
   }
   fclose(fp);
 
@@ -439,7 +288,7 @@ EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const 
 
   uint8_t plaintext[8192] = {0};
   size_t plaintext_len = 8192;
-  mbed_decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
+  decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
   int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
@@ -447,11 +296,9 @@ EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const 
     printf("Failed to load private key\n");
     free(ciphertext);
     mbedtls_pk_free(&key_ctx);
-    return NULL;
+    return;
   }
 
   free(ciphertext);
   mbedtls_pk_free(&key_ctx);
-
-  return NULL;
 }

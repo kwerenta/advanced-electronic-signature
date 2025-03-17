@@ -38,7 +38,6 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
  * @return Length of created ciphertext
  */
 int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext);
-int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext);
 /**
  * @brief Decrypts RSA private key using provided PIN
  * @param key Private key in form of cipher texted
@@ -48,9 +47,8 @@ int mbed_encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8
  * @param plaintext Buffer where decrypted private key will be stored
  * @return Length of created plaintext
  */
-int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext);
-int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext,
-                             size_t *plaintext_len);
+int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext,
+                        size_t *plaintext_len);
 
 /**
  * @brief Generates and saves RSA key pair where private key is encrypted
@@ -59,7 +57,6 @@ int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin
  * @param public_key_file Path to file where public key will be stored
  */
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file);
-void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file);
 /**
  * @brief Decrypts encrypted RSA private key and loads it into OpenSSL EVP_PKEY structure
  * @param private_key_file Path to encrypted private key file
@@ -67,7 +64,6 @@ void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_ke
  * @return EVP_PKEY strcutre with decrypted private key or NULL if failed to decrypt private key. EVP_PKEY should be
  * freed with EVP_PKEY_free() function
  */
-EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin);
-EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const char *pin);
+void decrypt_and_load_private_key(const char *private_key_file, const char *pin);
 
 #endif
