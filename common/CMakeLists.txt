@@ -9,6 +9,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls.git
   GIT_TAG v3.6.2
 )
+set(ENABLE_TESTING Off)
 
 FetchContent_MakeAvailable(mbedtls)
 
