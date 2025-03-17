@@ -3,7 +3,7 @@
 #include <string.h>
 #include "crypto.h"
 #include "util.h"
-
+#include "nfd.h"
 /**
  * @brief Required by Clay library to work properly
  */
@@ -43,10 +43,32 @@ void handleChoiceVerifyInteraction(Clay_ElementId id, Clay_PointerData pointer_i
 }
 
 
-void handleBrowseButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
+void handleBrowsePdfButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
   Context *ctx = (Context*)user_data;
-  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
-    printf("File browsing placeholder");
+
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    nfdchar_t *path = NULL;
+    nfdresult_t res = NFD_OpenDialog("pdf", NULL, &path);
+
+    if (res == NFD_OKAY)
+      strncpy(ctx->pdf_file, path, 128);
+
+    free(path);
+  }
+}
+
+void handleBrowsePubKeyButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
+  Context *ctx = (Context*)user_data;
+
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    nfdchar_t *path = NULL;
+    nfdresult_t res = NFD_OpenDialog("pub", NULL, &path);
+
+    if (res == NFD_OKAY)
+      strncpy(ctx->key_file, path, 128);
+
+    free(path);
+  }
 }
 
 /**
@@ -65,7 +87,7 @@ void layout_initial(Context *ctx) {
           .layout = {.padding = {12, 16, 16, 12}},
           .cornerRadius = CLAY_CORNER_RADIUS(4),
           .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG},) {
-      Clay_OnHover(handleBrowseButtonInteraction, (intptr_t)ctx);
+      Clay_OnHover(handleBrowsePdfButtonInteraction, (intptr_t)ctx);
       CLAY_TEXT(CLAY_STRING("Select PDF file"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = {255, 255, 255, 255}}));
     }
     CLAY({.id = CLAY_ID("ChoiceSignButton"),
@@ -111,8 +133,6 @@ void layout_sign(Context *ctx) {
       CLAY_TEXT(((Clay_String){.chars = ctx->key_file, .length = len}),
                 CLAY_TEXT_CONFIG({.fontSize = 26, .textColor = {255, 255, 255, 255}}));
     }
-    
-   
   }
 }
 
