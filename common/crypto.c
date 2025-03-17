@@ -124,6 +124,9 @@ int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *i
 
 int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv,
                              uint8_t *plaintext) {
+  enum {
+    block_size = PSA_BLOCK_CIPHER_BLOCK_LENGTH(PSA_KEY_TYPE_AES),
+  };
   psa_status_t status = psa_crypto_init();
   if (status != PSA_SUCCESS) {
     handleErrors();
@@ -140,7 +143,7 @@ int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin
   psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
   psa_set_key_bits(&attr, 256);
 
-  status = psa_import_key(&attr, pin, strlen((char *)pin), &key_id);
+  status = psa_import_key(&attr, pin, AES_256_KEY_SIZE, &key_id);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -161,14 +164,14 @@ int mbed_decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin
 
   size_t len, plaintext_len;
 
-  status = psa_cipher_update(&operation, key, key_len, plaintext, RSA_KEY_SIZE + 64, &len);
+  status = psa_cipher_update(&operation, key, key_len, plaintext, block_size, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
   }
 
   plaintext_len = len;
-  status = psa_cipher_finish(&operation, plaintext + len, RSA_KEY_SIZE + 64 - len, &len);
+  status = psa_cipher_finish(&operation, plaintext + len, block_size - len, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
     return 0;
@@ -367,4 +370,58 @@ EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char 
 
   printf("Decryption successful! Private key loaded.\n");
   return pkey;
+}
+
+EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
+  FILE *fp = fopen(private_key_file, "rb");
+  if (!fp) {
+    perror("Failed to open encrypted private key file");
+    return NULL;
+  }
+
+  // Read IV
+  // uint8_t iv[AES_BLOCK_SIZE];
+  // if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
+  //   fprintf(stderr, "Failed to read IV\n");
+  //   fclose(fp);
+  //   return NULL;
+  // }
+
+  // Read encrypted key data
+  fseek(fp, 0, SEEK_END);
+  long file_size = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+
+  uint8_t *ciphertext = calloc(file_size + 1, 1);
+  if (!ciphertext) {
+    fprintf(stderr, "Memory allocation error\n");
+    fclose(fp);
+    return NULL;
+  }
+
+  if (fread(ciphertext, 1, file_size, fp) != file_size) {
+    fprintf(stderr, "Failed to read encrypted private key\n");
+    fclose(fp);
+    free(ciphertext);
+    return NULL;
+  }
+  fclose(fp);
+
+  uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
+  derive_key_iv(pin, key, iv);
+
+  uint8_t plaintext[8192] = {0};
+  int plaintext_len = mbed_decrypt_private_key(ciphertext, file_size, key, iv, plaintext);
+
+  mbedtls_pk_context key_ctx;
+  int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len, NULL, 0, NULL, NULL);
+  if (ret != 0) {
+    handleErrors();
+    return NULL;
+  }
+
+  free(ciphertext);
+  mbedtls_pk_free(&key_ctx);
+
+  return NULL;
 }

@@ -68,5 +68,6 @@ void mbed_generate_encrypted_RSA_keypair(const char *pin, const char *private_ke
  * freed with EVP_PKEY_free() function
  */
 EVP_PKEY *decrypt_and_load_private_key(const char *private_key_file, const char *pin);
+EVP_PKEY *mbed_decrypt_and_load_private_key(const char *private_key_file, const char *pin);
 
 #endif
