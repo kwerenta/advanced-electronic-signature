@@ -254,8 +254,8 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   }
   fclose(fp);
 
-  uint8_t key[AES_256_KEY_SIZE], iv_null[AES_BLOCK_SIZE];
-  derive_key_iv(pin, key, iv_null);
+  uint8_t key[AES_256_KEY_SIZE], _iv[AES_BLOCK_SIZE];
+  derive_key_iv(pin, key, _iv);
 
   size_t plaintext_len = RSA_KEY_SIZE * 2 - 1;
   uint8_t *plaintext = calloc(plaintext_len + 1, 1);
