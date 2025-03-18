@@ -131,6 +131,18 @@ int decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *ke
 }
 
 /**
+ * @brief Internal function that is used for destroying context created in generate_encrypted_RSA_keypair() function
+ * @param pk PK context
+ * @param entropy Entropy context
+ * @param ctr_drbg CTR drbg context
+ */
+void free_keygen_context(mbedtls_pk_context *pk, mbedtls_entropy_context *entropy, mbedtls_ctr_drbg_context *ctr_drbg) {
+  mbedtls_pk_free(pk);
+  mbedtls_entropy_free(entropy);
+  mbedtls_ctr_drbg_free(ctr_drbg);
+}
+
+/**
  * This function adds Initialization Vector at the beginning of encrypted private key file, but it isn't neccessary with
  * current implementation of derive_key_iv(). Either it should be removed or derive_key_iv() function should be updated
  * in the future.
@@ -146,38 +158,29 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   mbedtls_pk_context key_ctx;
   mbedtls_entropy_context entropy = {0};
   mbedtls_ctr_drbg_context rng_ctx = {0};
-  const char *seed = "rsa_gen";
+  const char *custom = "rsa_gen";
 
   mbedtls_pk_init(&key_ctx);
   mbedtls_entropy_init(&entropy);
   mbedtls_ctr_drbg_init(&rng_ctx);
 
-  ret = mbedtls_ctr_drbg_seed(&rng_ctx, mbedtls_entropy_func, &entropy, (const uint8_t *)seed, strlen(seed));
+  ret = mbedtls_ctr_drbg_seed(&rng_ctx, mbedtls_entropy_func, &entropy, (const uint8_t *)custom, strlen(custom));
   if (ret != 0) {
-    mbedtls_pk_free(&key_ctx);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&rng_ctx);
-
+    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
     printf("Failed to initialize RNG\n");
     return;
   }
 
   ret = mbedtls_pk_setup(&key_ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
   if (ret != 0) {
-    mbedtls_pk_free(&key_ctx);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&rng_ctx);
-
+    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
     printf("Failed to initialize RNG\n");
     return;
   }
 
   ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(key_ctx), mbedtls_ctr_drbg_random, &rng_ctx, RSA_KEY_SIZE, 65537);
   if (ret != 0) {
-    mbedtls_pk_free(&key_ctx);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&rng_ctx);
-
+    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
     printf("Failed to generate RSA keypair\n");
     return;
   }
@@ -186,10 +189,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
 
   FILE *private_key_file_fp = fopen(private_key_file, "wb");
   if (private_key_file_fp == NULL) {
-    mbedtls_pk_free(&key_ctx);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&rng_ctx);
-
+    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
     perror("Failed to open private key file");
     return;
   }
@@ -204,10 +204,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
 
   FILE *public_key_fp = fopen(public_key_file, "wb");
   if (private_key_file_fp == NULL) {
-    mbedtls_pk_free(&key_ctx);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&rng_ctx);
-
+    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
     perror("Failed to open public key file");
     return;
   }
@@ -216,9 +213,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   fwrite(pub_key, 1, strlen((char *)pub_key), public_key_fp);
   fclose(public_key_fp);
 
-  mbedtls_pk_free(&key_ctx);
-  mbedtls_entropy_free(&entropy);
-  mbedtls_ctr_drbg_free(&rng_ctx);
+  free_keygen_context(&key_ctx, &entropy, &rng_ctx);
 }
 
 uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file) {
