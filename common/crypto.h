@@ -24,9 +24,9 @@
  * AES-256 key has fixed size of 256 bits. This function allows to use variable length PINs that will work with AES
  * encryption.
  *
- * @param pin PIN based on which key and IV will be created
- * @param key Buffer where generated key will be put. **Must** be size of #AES_256_KEY_SIZE
- * @param iv Buffer where generated initialization vector will be put. **Must** be size of #AES_BLOCK_SIZE
+ * @param pin [in] PIN in form of plaintext based on which key and IV will be created
+ * @param key [out] Buffer where generated key will be put. **Must** be size of #AES_256_KEY_SIZE
+ * @param iv [out] Buffer where generated initialization vector will be put. **Must** be size of #AES_BLOCK_SIZE
  */
 void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 /**
