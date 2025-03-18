@@ -88,20 +88,24 @@ void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uin
   status = decrypt == 0 ? psa_cipher_encrypt_setup(&operation, key_id, alg)
                         : psa_cipher_decrypt_setup(&operation, key_id, alg);
   if (status != PSA_SUCCESS) {
+    psa_destroy_key(key_id);
     handleErrors();
     return;
   }
 
   status = psa_cipher_set_iv(&operation, iv, AES_BLOCK_SIZE);
   if (status != PSA_SUCCESS) {
+    psa_destroy_key(key_id);
+    psa_cipher_abort(&operation);
     handleErrors();
     return;
   }
 
   size_t len = 0, total_len = 0;
-
   status = psa_cipher_update(&operation, input, input_len, output, *output_len, &len);
   if (status != PSA_SUCCESS) {
+    psa_destroy_key(key_id);
+    psa_cipher_abort(&operation);
     handleErrors();
     return;
   }
@@ -109,10 +113,10 @@ void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uin
 
   status = psa_cipher_finish(&operation, output + total_len, *output_len - total_len, &len);
   if (status != PSA_SUCCESS) {
+    psa_destroy_key(key_id);
+    psa_cipher_abort(&operation);
     if (decrypt == 0)
       handleErrors();
-    else
-      psa_cipher_abort(&operation);
     return;
   }
   total_len += len;
