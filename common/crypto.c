@@ -60,8 +60,8 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   mbedtls_psa_crypto_free();
 }
 
-void handle_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
-                                 const size_t input_len, uint8_t *output, size_t *output_len) {
+void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
+                                  const size_t input_len, uint8_t *output, size_t *output_len) {
   psa_status_t status = psa_crypto_init();
   if (status != PSA_SUCCESS) {
     handleErrors();
@@ -126,14 +126,14 @@ void handle_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint
 int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext,
                         size_t *ciphertext_len) {
   size_t key_len = strlen((char *)key);
-  handle_aes_cipher_operation(0, pin, iv, key, key_len, ciphertext, ciphertext_len);
+  perform_aes_cipher_operation(0, pin, iv, key, key_len, ciphertext, ciphertext_len);
 
   return 1;
 }
 
 int decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
                         uint8_t *plaintext, size_t *plaintext_len) {
-  handle_aes_cipher_operation(1, pin, iv, ciphertext, ciphertext_len, plaintext, plaintext_len);
+  perform_aes_cipher_operation(1, pin, iv, ciphertext, ciphertext_len, plaintext, plaintext_len);
   return 1;
 }
 

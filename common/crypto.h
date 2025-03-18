@@ -30,6 +30,18 @@
  */
 void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 /**
+ * @brief Internal function that simplifies AES encryption process
+ * @param decrypt Boolean that determines wheter it should perform decryption or encryption
+ * @param key [in] Key that will be used to decrypt/encrypt input data
+ * @param iv [in] Initialization Vector that will be used to decrypt/encrypt input data
+ * @param input [in] Data to decrypt/encrypt
+ * @param input_len Size of input
+ * @param output [out] Buffer where decrypted/encrypted data will be stored
+ * @param output_len [inout] Length of decrypted/encrypted data. It **must be** initialized with size of output buffer
+ */
+void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
+                                  const size_t input_len, uint8_t *output, size_t *output_len);
+/**
  * @brief Encrypts RSA private key of size #RSA_KEY_SIZE using AES-256-CBC and provided PIN as key
  * @param key Private key in form of plain text
  * @param pin PIN that will be used to encrypt private key
