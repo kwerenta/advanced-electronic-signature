@@ -83,7 +83,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
  * @param pin [in] PIN in plaintext form used to decrypt private key
  * @param private_key_file [in] Path to encrypted private key file
  * @return Null terminated buffer with decrypted private key
- * @return NULL if failed to load or decrypt private key
+ * @retval NULL if failed to load or decrypt private key
  */
 uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file);
 

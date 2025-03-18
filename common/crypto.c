@@ -257,12 +257,20 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   uint8_t key[AES_256_KEY_SIZE], iv_null[AES_BLOCK_SIZE];
   derive_key_iv(pin, key, iv_null);
 
-  size_t plaintext_len = RSA_KEY_SIZE * 2;
-  uint8_t plaintext[RSA_KEY_SIZE * 2] = {0};
+  size_t plaintext_len = RSA_KEY_SIZE * 2 - 1;
+  uint8_t *plaintext = calloc(plaintext_len + 1, 1);
+  if (!plaintext) {
+    fprintf(stderr, "Memory allocation error\n");
+    free(ciphertext);
+    fclose(fp);
+    return NULL;
+  }
+
   int ret = decrypt_private_key(key, iv, ciphertext, file_size, plaintext, &plaintext_len);
   if (ret != 0) {
-    printf("Failed to decrypt private key\n");
+    printf("Invalid PIN to decrypt private key\n");
     free(ciphertext);
+    free(plaintext);
     return NULL;
   }
 
@@ -271,12 +279,14 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
 
   ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
-    printf("Invalid PIN\n");
+    printf("Failed to parse private key\n");
     free(ciphertext);
+    free(plaintext);
     mbedtls_pk_free(&key_ctx);
     return NULL;
   }
 
+  free(ciphertext);
   mbedtls_pk_free(&key_ctx);
-  return ciphertext;
+  return plaintext;
 }
