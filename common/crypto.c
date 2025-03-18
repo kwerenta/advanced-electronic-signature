@@ -60,128 +60,80 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   mbedtls_psa_crypto_free();
 }
 
-int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext,
-                        size_t *ciphertext_len) {
+void handle_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
+                                 const size_t input_len, uint8_t *output, size_t *output_len) {
   psa_status_t status = psa_crypto_init();
-
   if (status != PSA_SUCCESS) {
     handleErrors();
-    return 0;
+    return;
   }
 
-  psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-  psa_algorithm_t alg = PSA_ALG_CBC_PKCS7;
-
   psa_key_id_t key_id;
+  psa_algorithm_t alg = PSA_ALG_CBC_PKCS7;
+  psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
   psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
 
-  psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_ENCRYPT);
+  psa_set_key_usage_flags(&attr, decrypt == 0 ? PSA_KEY_USAGE_ENCRYPT : PSA_KEY_USAGE_DECRYPT);
   psa_set_key_algorithm(&attr, alg);
   psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
   psa_set_key_bits(&attr, 256);
-  status = psa_import_key(&attr, pin, AES_256_KEY_SIZE, &key_id);
 
+  status = psa_import_key(&attr, key, AES_256_KEY_SIZE, &key_id);
   if (status != PSA_SUCCESS) {
     handleErrors();
-    return 0;
+    return;
   }
   psa_reset_key_attributes(&attr);
 
-  status = psa_cipher_encrypt_setup(&operation, key_id, alg);
+  status = decrypt == 0 ? psa_cipher_encrypt_setup(&operation, key_id, alg)
+                        : psa_cipher_decrypt_setup(&operation, key_id, alg);
   if (status != PSA_SUCCESS) {
     handleErrors();
-    return 0;
+    return;
   }
 
   status = psa_cipher_set_iv(&operation, iv, AES_BLOCK_SIZE);
   if (status != PSA_SUCCESS) {
     handleErrors();
-    return 0;
+    return;
   }
 
-  size_t key_len = strlen((char *)key);
   size_t len = 0, total_len = 0;
 
-  status = psa_cipher_update(&operation, key, key_len, ciphertext, *ciphertext_len, &len);
+  status = psa_cipher_update(&operation, input, input_len, output, *output_len, &len);
   if (status != PSA_SUCCESS) {
     handleErrors();
-    return 0;
+    return;
   }
   total_len = len;
 
-  status = psa_cipher_finish(&operation, ciphertext + total_len, *ciphertext_len - total_len, &len);
+  status = psa_cipher_finish(&operation, output + total_len, *output_len - total_len, &len);
   if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
+    if (decrypt == 0)
+      handleErrors();
+    else
+      psa_cipher_abort(&operation);
+    return;
   }
   total_len += len;
-  *ciphertext_len = total_len;
+  *output_len = total_len;
 
   psa_cipher_abort(&operation);
   psa_destroy_key(key_id);
   mbedtls_psa_crypto_free();
+}
+
+int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext,
+                        size_t *ciphertext_len) {
+  size_t key_len = strlen((char *)key);
+  handle_aes_cipher_operation(0, pin, iv, key, key_len, ciphertext, ciphertext_len);
+
   return 1;
 }
 
 int decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
                         uint8_t *plaintext, size_t *plaintext_len) {
-  psa_status_t status = psa_crypto_init();
-
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
-  }
-
-  psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-  psa_algorithm_t alg = PSA_ALG_CBC_PKCS7;
-
-  psa_key_id_t key_id;
-  psa_cipher_operation_t operation = PSA_CIPHER_OPERATION_INIT;
-
-  psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_DECRYPT);
-  psa_set_key_algorithm(&attr, alg);
-  psa_set_key_type(&attr, PSA_KEY_TYPE_AES);
-  psa_set_key_bits(&attr, 256);
-  status = psa_import_key(&attr, pin, AES_256_KEY_SIZE, &key_id);
-
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
-  }
-  psa_reset_key_attributes(&attr);
-
-  status = psa_cipher_decrypt_setup(&operation, key_id, alg);
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
-  }
-
-  status = psa_cipher_set_iv(&operation, iv, AES_BLOCK_SIZE);
-  if (status != PSA_SUCCESS) {
-    handleErrors();
-    return 0;
-  }
-  size_t len = 0, total_len = 0;
-
-  status = psa_cipher_update(&operation, ciphertext, ciphertext_len, plaintext, *plaintext_len, &len);
-  if (status != PSA_SUCCESS) {
-    psa_cipher_abort(&operation);
-    return 0;
-  }
-  total_len = len;
-
-  status = psa_cipher_finish(&operation, plaintext + total_len, *plaintext_len - total_len, &len);
-  if (status != PSA_SUCCESS) {
-    psa_cipher_abort(&operation);
-    return 0;
-  }
-  total_len += len;
-  *plaintext_len = total_len;
-
-  psa_cipher_abort(&operation);
-  psa_destroy_key(key_id);
-  mbedtls_psa_crypto_free();
-
+  handle_aes_cipher_operation(1, pin, iv, ciphertext, ciphertext_len, plaintext, plaintext_len);
   return 1;
 }
 
