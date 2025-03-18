@@ -96,7 +96,8 @@ int main() {
   PinData data = {.pin = {}, .curr_index = 0};
 
   const char *pin = "1234";
-  decrypt_and_load_private_key("encrypted_private_key.pem", pin);
+  uint8_t *pkey = load_encrypted_private_key(pin, "encrypted_private_key.pem");
+  free(pkey);
 
   while (!WindowShouldClose()) {
     clay_handle_movement();

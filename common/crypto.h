@@ -42,7 +42,7 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
                                   const size_t input_len, uint8_t *output, size_t *output_len);
 /**
- * @brief Encrypts RSA private key of size #RSA_KEY_SIZE using AES-256-CBC and provided PIN as key
+ * @brief Encrypts RSA private key using AES-256-CBC and provided PIN as key
  * @param pin [in] PIN that will be used to encrypt private key
  * @param iv [in] Initialization Vector used in AES-256 encryption
  * @param key [in] Private key in form of plain text that will be encrypted
@@ -66,18 +66,18 @@ void decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *k
 
 /**
  * @brief Generates and saves RSA key pair where private key is encrypted
- * @param pin PIN used to encrypt private key
- * @param private_key_file Path to file where encrypted private key will be stored
- * @param public_key_file Path to file where public key will be stored
+ * @param pin [in] PIN in plaintext form used to encrypt private key
+ * @param private_key_file [in] Path to file where encrypted private key will be stored
+ * @param public_key_file [in] Path to file where public key will be stored
  */
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file);
 /**
- * @brief Decrypts encrypted RSA private key and loads it into OpenSSL EVP_PKEY structure
- * @param private_key_file Path to encrypted private key file
- * @param pin PIN used to decrypt private key
- * @return EVP_PKEY strcutre with decrypted private key or NULL if failed to decrypt private key. EVP_PKEY should be
- * freed with EVP_PKEY_free() function
+ * @brief Loads encrypted private RSA key from PEM file and decrypts it
+ * @param pin [in] PIN in plaintext form used to decrypt private key
+ * @param private_key_file [in] Path to encrypted private key file
+ * @return Null terminated buffer with decrypted private key
+ * @return NULL if failed to load or decrypt private key
  */
-void decrypt_and_load_private_key(const char *private_key_file, const char *pin);
+uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file);
 
 #endif

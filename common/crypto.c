@@ -194,18 +194,18 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   mbedtls_ctr_drbg_free(&rng_ctx);
 }
 
-void decrypt_and_load_private_key(const char *private_key_file, const char *pin) {
+uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file) {
   FILE *fp = fopen(private_key_file, "rb");
   if (!fp) {
     perror("Failed to open encrypted private key file");
-    return;
+    return NULL;
   }
 
   uint8_t iv[AES_BLOCK_SIZE];
   if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
     fprintf(stderr, "Failed to read IV\n");
     fclose(fp);
-    return;
+    return NULL;
   }
 
   fseek(fp, 0, SEEK_END);
@@ -216,34 +216,34 @@ void decrypt_and_load_private_key(const char *private_key_file, const char *pin)
   if (!ciphertext) {
     fprintf(stderr, "Memory allocation error\n");
     fclose(fp);
-    return;
+    return NULL;
   }
 
   if (fread(ciphertext, 1, file_size, fp) != file_size) {
     fprintf(stderr, "Failed to read encrypted private key\n");
     fclose(fp);
     free(ciphertext);
-    return;
+    return NULL;
   }
   fclose(fp);
 
   uint8_t key[AES_256_KEY_SIZE], iv_null[AES_BLOCK_SIZE];
   derive_key_iv(pin, key, iv_null);
 
-  size_t plaintext_len = 8192;
-  uint8_t plaintext[8192] = {0};
+  size_t plaintext_len = RSA_KEY_SIZE * 2;
+  uint8_t plaintext[RSA_KEY_SIZE * 2] = {0};
   decrypt_private_key(key, iv, ciphertext, file_size, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
   mbedtls_pk_init(&key_ctx);
   int ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
-    printf("Failed to load private key\n");
+    printf("Invalid PIN\n");
     free(ciphertext);
     mbedtls_pk_free(&key_ctx);
-    return;
+    return NULL;
   }
 
-  free(ciphertext);
   mbedtls_pk_free(&key_ctx);
+  return ciphertext;
 }
