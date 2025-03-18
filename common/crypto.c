@@ -123,18 +123,15 @@ void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uin
   mbedtls_psa_crypto_free();
 }
 
-int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext,
-                        size_t *ciphertext_len) {
+void encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, uint8_t *ciphertext,
+                         size_t *ciphertext_len) {
   size_t key_len = strlen((char *)key);
   perform_aes_cipher_operation(0, pin, iv, key, key_len, ciphertext, ciphertext_len);
-
-  return 1;
 }
 
-int decrypt_private_key(const uint8_t *ciphertext, int ciphertext_len, const uint8_t *pin, const uint8_t *iv,
-                        uint8_t *plaintext, size_t *plaintext_len) {
-  perform_aes_cipher_operation(1, pin, iv, ciphertext, ciphertext_len, plaintext, plaintext_len);
-  return 1;
+void decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, size_t key_len, uint8_t *plaintext,
+                         size_t *plaintext_len) {
+  perform_aes_cipher_operation(1, pin, iv, key, key_len, plaintext, plaintext_len);
 }
 
 /**
@@ -178,7 +175,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   if (private_key_file_fp) {
     size_t key_len = RSA_KEY_SIZE * 2;
     mbedtls_pk_write_key_pem(&key_ctx, priv_key, key_len);
-    encrypt_private_key(priv_key, key, iv, enc_priv_key, &key_len);
+    encrypt_private_key(key, iv, priv_key, enc_priv_key, &key_len);
 
     fwrite(iv, 1, AES_BLOCK_SIZE, private_key_file_fp);
     fwrite(enc_priv_key, 1, key_len, private_key_file_fp);
@@ -235,7 +232,7 @@ void decrypt_and_load_private_key(const char *private_key_file, const char *pin)
 
   size_t plaintext_len = 8192;
   uint8_t plaintext[8192] = {0};
-  decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
+  decrypt_private_key(key, iv, ciphertext, file_size, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
   mbedtls_pk_init(&key_ctx);

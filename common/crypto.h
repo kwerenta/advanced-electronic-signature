@@ -43,25 +43,26 @@ void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uin
                                   const size_t input_len, uint8_t *output, size_t *output_len);
 /**
  * @brief Encrypts RSA private key of size #RSA_KEY_SIZE using AES-256-CBC and provided PIN as key
- * @param key Private key in form of plain text
- * @param pin PIN that will be used to encrypt private key
- * @param iv Initialization Vector used in AES-256 encryption
- * @param ciphertext Buffer where encrypted private key will be stored
- * @return Length of created ciphertext
+ * @param pin [in] PIN that will be used to encrypt private key
+ * @param iv [in] Initialization Vector used in AES-256 encryption
+ * @param key [in] Private key in form of plain text that will be encrypted
+ * @param ciphertext [out] Buffer where encrypted private key will be stored
+ * @param ciphertext_len [inout] Length of generated ciphertext. It **must be** initialized with size of ciphertext
+ * buffer
  */
-int encrypt_private_key(const uint8_t *key, const uint8_t *pin, const uint8_t *iv, uint8_t *ciphertext,
-                        size_t *ciphertext_len);
+void encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, uint8_t *ciphertext,
+                         size_t *ciphertext_len);
 /**
  * @brief Decrypts RSA private key using provided PIN
- * @param key Private key in form of cipher texted
- * @param key_len Length of key
- * @param pin PIN that will be used to decrypt private key
- * @param iv Initialization Vector used in AES-256 decryption
- * @param plaintext Buffer where decrypted private key will be stored
- * @return Length of created plaintext
+ * @param pin [in] PIN that will be used to decrypt private key
+ * @param iv [in] Initialization Vector used in AES-256 decryption
+ * @param key [in] Private key in form of cipher text that will be decrypted
+ * @param key_len Size of key
+ * @param plaintext [out] Buffer where decrypted private key will be stored
+ * @param plaintext_len [inout] Length of generated plaintext. It **must be** initialized with size of plaintext buffer
  */
-int decrypt_private_key(const uint8_t *key, int key_len, const uint8_t *pin, const uint8_t *iv, uint8_t *plaintext,
-                        size_t *plaintext_len);
+void decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, size_t key_len, uint8_t *plaintext,
+                         size_t *plaintext_len);
 
 /**
  * @brief Generates and saves RSA key pair where private key is encrypted
