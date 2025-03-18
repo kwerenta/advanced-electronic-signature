@@ -27,8 +27,10 @@
  * @param pin [in] PIN in form of plaintext based on which key and IV will be created
  * @param key [out] Buffer where generated key will be put. **Must** be size of #AES_256_KEY_SIZE
  * @param iv [out] Buffer where generated initialization vector will be put. **Must** be size of #AES_BLOCK_SIZE
+ * @retval 0 On success
+ * @retval PSA_ERROR_CODE Error code returned by PSA function
  */
-void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
+int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 /**
  * @brief Internal function that simplifies AES encryption process
  * @param decrypt Boolean that determines wheter it should perform decryption or encryption
@@ -38,9 +40,11 @@ void derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
  * @param input_len Size of input
  * @param output [out] Buffer where decrypted/encrypted data will be stored
  * @param output_len [inout] Length of decrypted/encrypted data. It **must be** initialized with size of output buffer
+ * @retval 0 On success
+ * @retval PSA_ERROR_CODE error code returned by psa function
  */
-void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
-                                  const size_t input_len, uint8_t *output, size_t *output_len);
+int perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
+                                 const size_t input_len, uint8_t *output, size_t *output_len);
 /**
  * @brief Encrypts RSA private key using AES-256-CBC and provided PIN as key
  * @param pin [in] PIN that will be used to encrypt private key
@@ -49,9 +53,11 @@ void perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uin
  * @param ciphertext [out] Buffer where encrypted private key will be stored
  * @param ciphertext_len [inout] Length of generated ciphertext. It **must be** initialized with size of ciphertext
  * buffer
+ * @retval 0 On success
+ * @retval PSA_ERROR_CODE error code returned by psa function
  */
-void encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, uint8_t *ciphertext,
-                         size_t *ciphertext_len);
+int encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, uint8_t *ciphertext,
+                        size_t *ciphertext_len);
 /**
  * @brief Decrypts RSA private key using provided PIN
  * @param pin [in] PIN that will be used to decrypt private key
@@ -60,10 +66,11 @@ void encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *k
  * @param key_len Size of key
  * @param plaintext [out] Buffer where decrypted private key will be stored
  * @param plaintext_len [inout] Length of generated plaintext. It **must be** initialized with size of plaintext buffer
+ * @retval 0 On success
+ * @retval PSA_ERROR_CODE error code returned by psa function
  */
-void decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, size_t key_len, uint8_t *plaintext,
-                         size_t *plaintext_len);
-
+int decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, size_t key_len, uint8_t *plaintext,
+                        size_t *plaintext_len);
 /**
  * @brief Generates and saves RSA key pair where private key is encrypted
  * @param pin [in] PIN in plaintext form used to encrypt private key
