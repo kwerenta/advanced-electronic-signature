@@ -1,27 +1,19 @@
 #include "util.h"
+#include <raylib.h>
+#include <string.h>
 
-#if defined(_WIN32)
+/**
+ * out_file buffer size should be 128 bytes
+ */
+uint8_t search_for_key(const char *path, char *out_file) {
+  FilePathList files = LoadDirectoryFilesEx(path, KEY_FILE_EXT, 0);
 
-#include "os/windows.h"
+  if (files.count == 0) {
+    UnloadDirectoryFiles(files);
+    return 0;
+  }
 
-#elif defined(__APPLE__)
-
-#include "os/apple.h"
-
-#elif defined(__linux__)
-
-#include "os/linux.h"
-
-#endif
-
-uint8_t search_for_key(const char* path, char* out_file) {
-#if defined(_WIN32)
-  return windows_search_for_key(path, out_file);
-#elif defined(__APPLE__)
-  return apple_search_for_key(path, out_file);
-#elif defined(__linux__)
-  return linux_search_for_key(path, out_file);
-#else
-  return 0;
-#endif
+  strncpy(out_file, files.paths[0], 128);
+  UnloadDirectoryFiles(files);
+  return 1;
 }

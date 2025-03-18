@@ -1,7 +1,7 @@
 #include "crypto.h"
 #include <raylib.h>
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
 /**
  *@brief Maxium length of PIN that user can enter
@@ -44,20 +44,23 @@ typedef struct {
  * @brief Handles PIN input using keyboard
  * @param curr_index Currently selected PIN character
  * @param pin PIN storage
- *
- * @TODO PIN should be able to contain other characters than just digits
  */
 void handle_controls(PinData *data) {
-  int key = GetKeyPressed();
 
-  if (key >= KEY_ZERO && key <= KEY_NINE) {
-    data->pin[data->curr_index] = key;
-    if (data->curr_index + 1 < MAX_PIN_LENGTH)
-      data->curr_index++;
-    return;
+  int key = GetCharPressed();
+  while (key > 0) {
+    // NOTE: Only allow ASCII printable characters
+    if (key >= 32 && key <= 126) {
+      data->pin[data->curr_index] = key;
+      if (data->curr_index + 1 < MAX_PIN_LENGTH)
+        data->curr_index++;
+      return;
+    }
+
+    key = GetCharPressed();
   }
 
-  if (key == KEY_BACKSPACE) {
+  if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
     if (data->curr_index - 1 >= 0 && (data->curr_index < MAX_PIN_LENGTH - 1 ||
                                       (data->curr_index == MAX_PIN_LENGTH - 1 && data->pin[data->curr_index] == 0)))
       data->curr_index--;
@@ -92,6 +95,10 @@ int main() {
   clay_set_measure_text(fonts);
 
   PinData data = {.pin = {}, .curr_index = 0};
+
+  const char *pin = "1234";
+  uint8_t *pkey = load_encrypted_private_key(pin, "encrypted_private_key.pem");
+  free(pkey);
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
