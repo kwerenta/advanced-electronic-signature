@@ -34,7 +34,8 @@ typedef enum {
 
 typedef struct {
   AppMode mode;
-  char key_file[128];
+  char sign_key_file[128];
+  char verify_key_file[128];
   char pdf_file[128];
 } Context;
 
@@ -97,8 +98,8 @@ void handleBrowsePubKeyButtonInteraction(Clay_ElementId id, Clay_PointerData poi
     nfdresult_t res = NFD_OpenDialog("pub", NULL, &path);
 
     if (res == NFD_OKAY) {
-      if (ctx->key_file[0] != 0) memset(ctx->key_file, 0, 128);
-      strncpy(ctx->key_file, path, 128);
+      if (ctx->verify_key_file[0] != 0) memset(ctx->verify_key_file, 0, 128);
+      strncpy(ctx->verify_key_file, path, 128);
     }
 
     free(path);
@@ -117,6 +118,17 @@ void handleConfirmSignButtonInteraction(Clay_ElementId id, Clay_PointerData poin
 }
 
 /**
+ * @brief Detects if button was clicked and tries to verify the chosen file
+ */
+void handleConfirmVerifyButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_info, intptr_t user_data) {
+  Context *ctx = (Context*)user_data;
+
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    printf("Document verification placeholder\n");
+  }
+}
+
+/**
  * @brief Creates a layout for the app's initial view
  * @param ctx Pointer to the application's context
  */
@@ -129,7 +141,7 @@ void layout_initial(Context *ctx) {
                    .childGap = 16},
         .backgroundColor = COLOR_BACKGROUND}) {
     if (ctx->pdf_file[0] == 0) {
-      CLAY({.id = CLAY_ID("BrowseButton"),
+      CLAY({.id = CLAY_ID("BrowsePdfButton"),
             .layout = {.padding = {12, 16, 16, 12},
                        .sizing = {CLAY_SIZING_PERCENT(0.25)},
                        .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
@@ -200,17 +212,19 @@ void layout_sign(Context *ctx) {
 
     CLAY_TEXT(((Clay_String){.chars = ctx->pdf_file, .length = pdf_len}), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
 
-    if (find_private_key(ctx->key_file) == 0) {
+    if (find_private_key(ctx->sign_key_file) == 0) {
       CLAY_TEXT(CLAY_STRING("Waiting for pendrive to be plugged in ..."),
                 CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
     }
     else {
-      uint32_t key_len = strlen(ctx->key_file);
+      uint32_t key_len = strlen(ctx->sign_key_file);
 
       CLAY_TEXT(CLAY_STRING("Detected key:"),
                 CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
-      CLAY_TEXT(((Clay_String){.chars = ctx->key_file, .length = key_len}),
+
+      CLAY_TEXT(((Clay_String){.chars = ctx->sign_key_file, .length = key_len}),
                 CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
       CLAY({.id = CLAY_ID("ConfirmSignButton"),
             .layout = {.padding = {12, 16, 16, 12},
                        .sizing = {CLAY_SIZING_PERCENT(0.25)},
@@ -221,7 +235,8 @@ void layout_sign(Context *ctx) {
         CLAY_TEXT(CLAY_STRING("Confirm sign"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
       }
     }
-    CLAY({.id = CLAY_ID("CancelButton"),
+
+    CLAY({.id = CLAY_ID("SignCancelButton"),
           .layout = {.padding = {12, 16, 16, 12},
                      .sizing = {CLAY_SIZING_PERCENT(0.25)},
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
@@ -245,7 +260,51 @@ void layout_verify(Context *ctx) {
                    .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER},
                    .childGap = 16},
         .backgroundColor = COLOR_BACKGROUND}) {
-    
+    uint32_t pdf_len = strlen(ctx->pdf_file);
+
+    CLAY_TEXT(CLAY_STRING("Selected PDF file:"), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
+    CLAY_TEXT(((Clay_String){.chars = ctx->pdf_file, .length = pdf_len}), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+    if (ctx->verify_key_file[0] == 0) {
+      CLAY({.id = CLAY_ID("BrowsePubKeyButton"),
+            .layout = {.padding = {12, 16, 16, 12},
+                      .sizing = {CLAY_SIZING_PERCENT(0.25)},
+                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_PROCEED_HOVER : COLOR_BUTTON_PROCEED_BG}) {
+        Clay_OnHover(handleBrowsePubKeyButtonInteraction, (intptr_t)ctx);
+        CLAY_TEXT(CLAY_STRING("Select public key"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
+      }
+    }
+    else {
+      uint32_t key_len = strlen(ctx->verify_key_file);
+
+      CLAY_TEXT(CLAY_STRING("Selected public key:"),
+                CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
+      CLAY_TEXT(((Clay_String){.chars = ctx->verify_key_file, .length = key_len}),
+                CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
+      CLAY({.id = CLAY_ID("ConfirmVerifyButton"),
+            .layout = {.padding = {12, 16, 16, 12},
+                        .sizing = {CLAY_SIZING_PERCENT(0.25)},
+                        .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_PROCEED_HOVER : COLOR_BUTTON_PROCEED_BG}) {
+        Clay_OnHover(handleConfirmVerifyButtonInteraction, (intptr_t)ctx);
+        CLAY_TEXT(CLAY_STRING("Confirm verify"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
+      }
+    }
+
+    CLAY({.id = CLAY_ID("VerifyCancelButton"),
+          .layout = {.padding = {12, 16, 16, 12},
+                    .sizing = {CLAY_SIZING_PERCENT(0.25)},
+                    .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
+          .cornerRadius = CLAY_CORNER_RADIUS(4),
+          .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_CANCEL_HOVER : COLOR_BUTTON_CANCEL_BG}) {
+      Clay_OnHover(handleCancelButtonInteraction, (intptr_t)ctx);
+      CLAY_TEXT(CLAY_STRING("Cancel"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
+    }
   }
 }
 
@@ -257,7 +316,7 @@ int main() {
   SetTextureFilter(fonts[0].texture, TEXTURE_FILTER_BILINEAR);
   clay_set_measure_text(fonts);
 
-  Context ctx = {.mode = MODE_INITIAL, .key_file = {}, .pdf_file = {}};
+  Context ctx = {.mode = MODE_INITIAL, .sign_key_file = {}, .verify_key_file = {}, .pdf_file = {}};
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
