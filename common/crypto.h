@@ -28,7 +28,7 @@
  * @param key [out] Buffer where generated key will be put. **Must** be size of #AES_256_KEY_SIZE
  * @param iv [out] Buffer where generated initialization vector will be put. **Must** be size of #AES_BLOCK_SIZE
  * @retval 0 On success
- * @retval PSA_ERROR_CODE Error code returned by PSA function
+ * @retval PSA_ERROR_CODE On any Mbed TLS function error
  */
 int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 /**
@@ -41,7 +41,7 @@ int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
  * @param output [out] Buffer where decrypted/encrypted data will be stored
  * @param output_len [inout] Length of decrypted/encrypted data. It **must be** initialized with size of output buffer
  * @retval 0 On success
- * @retval PSA_ERROR_CODE error code returned by psa function
+ * @retval PSA_ERROR_CODE On any Mbed TLS function error
  */
 int perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint8_t *iv, const uint8_t *input,
                                  const size_t input_len, uint8_t *output, size_t *output_len);
@@ -54,7 +54,7 @@ int perform_aes_cipher_operation(uint8_t decrypt, const uint8_t *key, const uint
  * @param ciphertext_len [inout] Length of generated ciphertext. It **must be** initialized with size of ciphertext
  * buffer
  * @retval 0 On success
- * @retval PSA_ERROR_CODE error code returned by psa function
+ * @retval PSA_ERROR_CODE On any Mbed TLS function error
  */
 int encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, uint8_t *ciphertext,
                         size_t *ciphertext_len);
@@ -67,7 +67,7 @@ int encrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *ke
  * @param plaintext [out] Buffer where decrypted private key will be stored
  * @param plaintext_len [inout] Length of generated plaintext. It **must be** initialized with size of plaintext buffer
  * @retval 0 On success
- * @retval PSA_ERROR_CODE error code returned by psa function
+ * @retval PSA_ERROR_CODE On any Mbed TLS function error
  */
 int decrypt_private_key(const uint8_t *pin, const uint8_t *iv, const uint8_t *key, size_t key_len, uint8_t *plaintext,
                         size_t *plaintext_len);
@@ -82,8 +82,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
  * @brief Loads encrypted private RSA key from PEM file and decrypts it
  * @param pin [in] PIN in plaintext form used to decrypt private key
  * @param private_key_file [in] Path to encrypted private key file
- * @return Null terminated buffer with decrypted private key
- * @retval NULL if failed to load or decrypt private key
+ * @return Null terminated buffer with decrypted private key or NULL if error occur
  */
 uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file);
 
