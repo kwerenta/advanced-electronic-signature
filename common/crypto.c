@@ -228,6 +228,8 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   if (private_key_file_fp) {
     mbedtls_pk_write_key_pem(&key_ctx, priv_key, RSA_KEY_SIZE * 2);
     int key_len = encrypt_private_key(priv_key, key, iv, enc_priv_key);
+
+    fwrite(iv, 1, AES_BLOCK_SIZE, private_key_file_fp);
     fwrite(enc_priv_key, 1, key_len, private_key_file_fp);
     fclose(private_key_file_fp);
   }
@@ -251,18 +253,16 @@ void decrypt_and_load_private_key(const char *private_key_file, const char *pin)
     return;
   }
 
-  // Read IV
-  // uint8_t iv[AES_BLOCK_SIZE];
-  // if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
-  //   fprintf(stderr, "Failed to read IV\n");
-  //   fclose(fp);
-  //   return NULL;
-  // }
+  uint8_t iv[AES_BLOCK_SIZE];
+  if (fread(iv, 1, AES_BLOCK_SIZE, fp) != AES_BLOCK_SIZE) {
+    fprintf(stderr, "Failed to read IV\n");
+    fclose(fp);
+    return;
+  }
 
-  // Read encrypted key data
   fseek(fp, 0, SEEK_END);
-  long file_size = ftell(fp);
-  fseek(fp, 0, SEEK_SET);
+  long file_size = ftell(fp) - AES_BLOCK_SIZE;
+  fseek(fp, AES_BLOCK_SIZE, SEEK_SET);
 
   uint8_t *ciphertext = calloc(file_size + 1, 1);
   if (!ciphertext) {
@@ -279,11 +279,11 @@ void decrypt_and_load_private_key(const char *private_key_file, const char *pin)
   }
   fclose(fp);
 
-  uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
-  derive_key_iv(pin, key, iv);
+  uint8_t key[AES_256_KEY_SIZE], iv_null[AES_BLOCK_SIZE];
+  derive_key_iv(pin, key, iv_null);
 
   uint8_t plaintext[8192] = {0};
-  size_t plaintext_len = 8192;
+  size_t plaintext_len = 0;
   decrypt_private_key(ciphertext, file_size, key, iv, plaintext, &plaintext_len);
 
   mbedtls_pk_context key_ctx;
