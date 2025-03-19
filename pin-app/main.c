@@ -1,4 +1,5 @@
 #include "crypto.h"
+#include "psa/crypto_sizes.h"
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,6 +99,10 @@ int main() {
 
   const char *pin = "1234";
   uint8_t *pkey = load_encrypted_private_key(pin, "encrypted_private_key.pem");
+  uint8_t hash[PSA_HASH_MAX_SIZE], sign[PSA_SIGNATURE_MAX_SIZE];
+  size_t hash_len = PSA_HASH_MAX_SIZE, sign_len = PSA_SIGNATURE_MAX_SIZE;
+  compute_pdf_hash("/Users/kamil/Downloads/ENG_SCS_2025_project_v1.pdf", hash, &hash_len);
+  sign_hash(hash, hash_len, pkey, sign, &sign_len);
   free(pkey);
 
   while (!WindowShouldClose()) {
