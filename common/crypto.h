@@ -91,11 +91,10 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
  * @param pdf_file Path to PDF file the hash will be computed of
  * @param hash Buffer where computed hash will be stored
  * @param hash_len Place where length of computed hash will be stored
- * @return Boolean value indicating wheter hash has been computed successfully
  *
  * @TODO Check wheter hash_len is always the same
  */
-uint8_t compute_pdf_hash(const char *pdf_file, uint8_t *hash, uint32_t *hash_len);
+void compute_pdf_hash(const char *pdf_file, uint8_t *hash, size_t *hash_len);
 /**
  * @brief Creates signature of hash with provided private key
  * @param hash Computed hash that will be signed
@@ -106,6 +105,6 @@ uint8_t compute_pdf_hash(const char *pdf_file, uint8_t *hash, uint32_t *hash_len
  *
  * @TODO Check wheter sign_len is always the same
  */
-uint8_t sign_hash(const uint8_t *hash, uint32_t hash_len, EVP_PKEY *private_key, uint8_t *sign, size_t *sign_len);
+void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key, uint8_t *sign, size_t *sign_len);
 
 #endif

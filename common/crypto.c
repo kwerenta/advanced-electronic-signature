@@ -286,50 +286,97 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   return plaintext;
 }
 
-uint8_t compute_pdf_hash(const char *pdf_file, uint8_t *hash, uint32_t *hash_len) {
+void compute_pdf_hash(const char *pdf_file, uint8_t *hash, size_t *hash_len) {
   FILE *file = fopen(pdf_file, "rb");
-  if (!file)
-    handle_errors();
+  if (!file) {
+    perror("Failed to open PDF file");
+    return;
+  }
 
-  EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
-  if (!mdctx)
-    handle_errors();
+  psa_status_t status = psa_crypto_init();
+  if (status != PSA_SUCCESS) {
+    return;
+  }
 
-  if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1)
-    handle_errors();
+  psa_algorithm_t alg = PSA_ALG_SHA_256;
+  psa_hash_operation_t operation = PSA_HASH_OPERATION_INIT;
+
+  status = psa_hash_setup(&operation, alg);
+  if (status != PSA_SUCCESS) {
+    return;
+  }
 
   uint8_t buffer[RSA_KEY_SIZE];
   size_t bytes_read;
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-    if (EVP_DigestUpdate(mdctx, buffer, bytes_read) != 1)
-      handle_errors();
+    status = psa_hash_update(&operation, buffer, bytes_read);
+    if (status != PSA_SUCCESS) {
+      psa_hash_abort(&operation);
+      return;
+    }
   }
   fclose(file);
 
-  if (EVP_DigestFinal_ex(mdctx, hash, hash_len) != 1)
-    handle_errors();
+  status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, hash_len);
+  if (status != PSA_SUCCESS) {
+    psa_hash_abort(&operation);
+    return;
+  }
 
-  EVP_MD_CTX_free(mdctx);
-  return 0;
+  psa_hash_abort(&operation);
+  mbedtls_psa_crypto_free();
 }
 
-uint8_t sign_hash(const uint8_t *hash, uint32_t hash_len, EVP_PKEY *private_key, uint8_t *sign, size_t *sign_len) {
-  EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
-  if (!md_ctx)
-    handle_errors();
+void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key, uint8_t *sign, size_t *sign_len) {
+  psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+  psa_key_id_t key_id;
 
-  if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, private_key) != 1)
-    handle_errors();
-  if (EVP_DigestSignUpdate(md_ctx, hash, hash_len) != 1)
-    handle_errors();
-  if (EVP_DigestSignFinal(md_ctx, NULL, sign_len) != 1)
-    handle_errors();
+  psa_status_t status = psa_crypto_init();
+  if (status != PSA_SUCCESS) {
+    return;
+  }
 
-  if (EVP_DigestSignFinal(md_ctx, sign, sign_len) != 1)
-    handle_errors();
+  psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_HASH);
+  psa_set_key_algorithm(&attributes, PSA_ALG_RSA_PKCS1V15_SIGN_RAW);
+  psa_set_key_type(&attributes, PSA_KEY_TYPE_RSA_KEY_PAIR);
+  psa_set_key_bits(&attributes, RSA_KEY_SIZE);
 
-  EVP_MD_CTX_free(md_ctx);
-  EVP_PKEY_free(private_key);
+  mbedtls_pk_context key_ctx;
+  mbedtls_pk_init(&key_ctx);
 
-  return 1;
+  status = mbedtls_pk_parse_key(&key_ctx, private_key, strlen((char *)private_key) + 1, NULL, 0, NULL, NULL);
+  if (status != 0) {
+    printf("Failed to parse private key\n");
+    mbedtls_pk_free(&key_ctx);
+    return;
+  }
+
+  // Convert PEM private key to DER format
+  uint8_t pkey_der[RSA_KEY_SIZE];
+  size_t pkey_len = 0;
+  status = mbedtls_pk_write_key_der(&key_ctx, pkey_der, sizeof(pkey_der));
+  if (status < 0) {
+    printf("Failed to convert RSA key to DER");
+    return;
+  }
+  pkey_len = status;
+
+  status = psa_import_key(&attributes, pkey_der + sizeof(pkey_der) - pkey_len, pkey_len, &key_id);
+  if (status != PSA_SUCCESS) {
+
+    char err_buf[100];
+    mbedtls_strerror(status, err_buf, sizeof(err_buf));
+    printf("mbed TLS error: %s\n", err_buf);
+    return;
+  }
+
+  status = psa_sign_hash(key_id, PSA_ALG_RSA_PKCS1V15_SIGN_RAW, hash, hash_len, sign, *sign_len, sign_len);
+  if (status != PSA_SUCCESS) {
+    printf("Failed to sign\n");
+    return;
+  }
+
+  psa_reset_key_attributes(&attributes);
+  psa_destroy_key(key_id);
+  mbedtls_psa_crypto_free();
 }
