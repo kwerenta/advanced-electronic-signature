@@ -11,6 +11,8 @@
 #include "clay-shared.h"
 #include "lib/clay.h"
 
+#define MAX_PIN_LENGTH (16)
+
 #define DEFAULT_TEXT_CONFIG {.fontSize = 26, .textColor = {255, 255, 255, 255}}
 #define BUTTON_TEXT_CONFIG {.fontSize = 36, .textColor = {255, 255, 255, 255}}
 
@@ -33,12 +35,55 @@ typedef enum {
 } AppMode;
 
 typedef struct {
+  uint8_t curr_index;
+  char pin[MAX_PIN_LENGTH + 1];
+} PinData;
+
+typedef struct {
   AppMode mode;
+  PinData pin_data;
   char sign_key_file[128];
   char verify_key_file[128];
   char pdf_file[128];
 } Context;
 
+Clay_BorderElementConfig get_pin_box_border(uint8_t curr_index, uint8_t index) {
+  if (curr_index != index)
+    return (Clay_BorderElementConfig){};
+
+  return (Clay_BorderElementConfig){.color = {15, 188, 249, 255}, .width = CLAY_BORDER_ALL(2)};
+}
+
+/**
+ * @brief Handles PIN input using keyboard
+ * @param ctx Application context
+ */
+ void handle_controls(Context *ctx) {
+
+  if (ctx->mode != MODE_SIGN || ctx->sign_key_file[0] == 0)
+    return;
+
+  int key = GetCharPressed();
+  while (key > 0) {
+    // NOTE: Only allow ASCII printable characters
+    if (key >= 32 && key <= 126) {
+      ctx->pin_data.pin[ctx->pin_data.curr_index] = key;
+      if (ctx->pin_data.curr_index + 1 < MAX_PIN_LENGTH)
+        ctx->pin_data.curr_index++;
+      return;
+    }
+
+    key = GetCharPressed();
+  }
+
+  if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
+    if (ctx->pin_data.curr_index - 1 >= 0 && (ctx->pin_data.curr_index < MAX_PIN_LENGTH - 1 ||
+        (ctx->pin_data.curr_index == MAX_PIN_LENGTH - 1 && ctx->pin_data.pin[ctx->pin_data.curr_index] == 0)))
+      ctx->pin_data.curr_index--;
+    ctx->pin_data.pin[ctx->pin_data.curr_index] = 0;
+    return;
+  }
+}
 
 /**
  * @brief Detects if button was clicked and changes the application mode
@@ -168,9 +213,6 @@ void layout_initial(Context *ctx) {
         CLAY_TEXT(CLAY_STRING("Change file"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
       }
 
-      CLAY({.id = CLAY_ID("Separator")});
-
-
       CLAY({.id = CLAY_ID("ChoiceSignButton"),
             .layout = {.padding = {12, 16, 16, 12},
                        .sizing = {CLAY_SIZING_PERCENT(0.25)},
@@ -219,11 +261,33 @@ void layout_sign(Context *ctx) {
     else {
       uint32_t key_len = strlen(ctx->sign_key_file);
 
-      CLAY_TEXT(CLAY_STRING("Detected key:"),
-                CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+      CLAY_TEXT(CLAY_STRING("Detected key:"), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
 
       CLAY_TEXT(((Clay_String){.chars = ctx->sign_key_file, .length = key_len}),
                 CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
+      CLAY_TEXT(CLAY_STRING("Enter PIN:"), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
+
+      CLAY({.id = CLAY_ID("PinContainer"),
+            .layout = {.padding = CLAY_PADDING_ALL(8), .childGap = 8},
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+            .backgroundColor = {30, 39, 46, 255}}) {
+
+        for (uint8_t i = 0; i < MAX_PIN_LENGTH; i++) {
+          CLAY({.id = CLAY_IDI_LOCAL("PinNumber", i),
+                .layout = {.sizing = {CLAY_SIZING_FIXED(36), CLAY_SIZING_FIXED(48)},
+                            .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
+                .cornerRadius = CLAY_CORNER_RADIUS(4),
+                .border = get_pin_box_border(ctx->pin_data.curr_index, i),
+                .backgroundColor = {210, 218, 226, 255}}) {
+
+            if (ctx->pin_data.pin[i] != 0) {
+              CLAY_TEXT(((Clay_String){.chars = &(ctx->pin_data.pin)[i], .length = 1}),
+                        CLAY_TEXT_CONFIG({.fontSize = 48, .textColor = {0, 0, 0, 255}}));
+            }
+          }
+        }
+      }
 
       CLAY({.id = CLAY_ID("ConfirmSignButton"),
             .layout = {.padding = {12, 16, 16, 12},
@@ -320,6 +384,8 @@ int main() {
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
+
+    handle_controls(&ctx);
 
     Clay_BeginLayout();
 
