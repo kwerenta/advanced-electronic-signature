@@ -97,13 +97,6 @@ int main() {
 
   PinData data = {.pin = {}, .curr_index = 0};
 
-  const char *pin = "1234";
-  uint8_t *pkey = load_encrypted_private_key(pin, "encrypted_private_key.pem");
-  sign_pdf_file("lab3.pdf", pkey);
-  sign_pdf_file("lab4.pdf", pkey);
-  sign_pdf_file("hd.pdf", pkey);
-  free(pkey);
-
   while (!WindowShouldClose()) {
     clay_handle_movement();
 
