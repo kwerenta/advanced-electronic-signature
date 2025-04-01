@@ -1,5 +1,6 @@
 #include "crypto.h"
 #include "mbedtls/entropy.h"
+#include "psa/crypto_sizes.h"
 #include "psa/crypto_struct.h"
 #include "psa/crypto_types.h"
 #include "psa/crypto_values.h"
@@ -286,13 +287,7 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   return plaintext;
 }
 
-void compute_pdf_hash(const char *pdf_file, uint8_t *hash, size_t *hash_len) {
-  FILE *file = fopen(pdf_file, "rb");
-  if (!file) {
-    perror("Failed to open PDF file");
-    return;
-  }
-
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t *hash_len) {
   psa_status_t status = psa_crypto_init();
   if (status != PSA_SUCCESS) {
     return;
@@ -308,14 +303,13 @@ void compute_pdf_hash(const char *pdf_file, uint8_t *hash, size_t *hash_len) {
 
   uint8_t buffer[RSA_KEY_SIZE];
   size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), pdf_file)) > 0) {
     status = psa_hash_update(&operation, buffer, bytes_read);
     if (status != PSA_SUCCESS) {
       psa_hash_abort(&operation);
       return;
     }
   }
-  fclose(file);
 
   status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, hash_len);
   if (status != PSA_SUCCESS) {
@@ -379,4 +373,37 @@ void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key,
   psa_reset_key_attributes(&attributes);
   psa_destroy_key(key_id);
   mbedtls_psa_crypto_free();
+}
+
+void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
+  FILE *pdf_file = fopen(pdf_path, "a+");
+
+  if (pdf_file == NULL) {
+    perror("Failed to open PDF file");
+    return;
+  }
+
+  uint8_t hash[PSA_HASH_MAX_SIZE], sign[PSA_SIGNATURE_MAX_SIZE];
+  size_t hash_len = PSA_HASH_MAX_SIZE, sign_len = PSA_SIGNATURE_MAX_SIZE;
+
+  compute_pdf_hash(pdf_file, hash, &hash_len);
+  sign_hash(hash, hash_len, private_key, sign, &sign_len);
+
+  fseek(pdf_file, 0, SEEK_END);
+  long size = ftell(pdf_file);
+
+  fputs("<</Type /Sig\n/Filter /Adobe.PPKLite\n/SubFilter /adbe.pkcs7.detached\n", pdf_file);
+
+  char byte_range[1024] = {0};
+  snprintf(byte_range, 1024, "/ByteRange [0 %lu %lu 0]\n", size, size);
+  fputs(byte_range, pdf_file);
+
+  char hex[3] = {0}, contents[2048] = {0};
+  sprintf(contents, "/Contents <");
+  for (int i = 0; i < sign_len; i++) {
+    snprintf(hex, 3, "%02X", sign[i]);
+    strcat(contents, hex);
+  }
+  strcat(contents, ">\n>>\n");
+  fputs(contents, pdf_file);
 }
