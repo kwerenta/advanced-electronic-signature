@@ -108,6 +108,11 @@ void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t *hash_len);
  */
 void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key, uint8_t *sign, size_t *sign_len);
 
+/**
+ * @brief Creates signature for PDF file and adds it to the end of the file
+ * @param pdf_path Path to PDF file that will be signed
+ * @param private_key Decrypted private key that will be used to sign hash
+ */
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key);
 
 #endif
