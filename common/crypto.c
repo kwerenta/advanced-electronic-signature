@@ -398,12 +398,61 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
 
   fprintf(pdf_file, "/ByteRange [0 %lu %lu 0]\n", size, size);
 
-  char hex[3] = {0}, contents[2048] = {0};
+  char hex[3] = {0}, contents[1025] = {0};
   for (int i = 0; i < PSA_SIGNATURE_MAX_SIZE; i++) {
     snprintf(hex, 3, "%02X", sign[i]);
     strcat(contents, hex);
   }
   fprintf(pdf_file, "/Contents <%s>\n>>\n", contents);
+
+  fclose(pdf_file);
+}
+
+void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
+  FILE *pdf_file = fopen(pdf_path, "r");
+
+  if (pdf_file == NULL) {
+    perror("Failed to open PDF file");
+    return;
+  }
+
+  uint8_t signature_headers = 0;
+  char buffer[10240];
+  uint8_t signature[1025] = {0};
+  uint32_t range[4] = {0};
+
+  while (fgets(buffer, sizeof(buffer), pdf_file)) {
+    if (strstr(buffer, "<</Type /Sig") != NULL && signature_headers == 0)
+      signature_headers++;
+    else if (strstr(buffer, "/Filter /Adobe.PPKLite") != NULL && signature_headers == 1)
+      signature_headers++;
+    else if (strstr(buffer, "/SubFilter /adbe.pkcs7.detached") != NULL && signature_headers == 2)
+      signature_headers++;
+
+    if (signature_headers == 3) {
+      break;
+    }
+  }
+
+  if (signature_headers != 3) {
+    perror("Failed to find signature in PDF file");
+    fclose(pdf_file);
+    return;
+  }
+
+  fgets(buffer, sizeof(buffer), pdf_file);
+  int has_found = sscanf(buffer, "/ByteRange [%d %d %d %d]", &range[0], &range[1], &range[2], &range[3]);
+  if (has_found != 4) {
+    perror("Failed to load byte range");
+    return;
+  }
+
+  fgets(buffer, sizeof(buffer), pdf_file);
+  has_found = sscanf(buffer, "/Contents <%1024s>\n>>\n", signature);
+  if (has_found == 0) {
+    perror("Failed to load signature content");
+    return;
+  }
 
   fclose(pdf_file);
 }
