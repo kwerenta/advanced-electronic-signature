@@ -396,18 +396,14 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
 
   fputs("<</Type /Sig\n/Filter /Adobe.PPKLite\n/SubFilter /adbe.pkcs7.detached\n", pdf_file);
 
-  char byte_range[1024] = {0};
-  snprintf(byte_range, 1024, "/ByteRange [0 %lu %lu 0]\n", size, size);
-  fputs(byte_range, pdf_file);
+  fprintf(pdf_file, "/ByteRange [0 %lu %lu 0]\n", size, size);
 
   char hex[3] = {0}, contents[2048] = {0};
-  sprintf(contents, "/Contents <");
   for (int i = 0; i < PSA_SIGNATURE_MAX_SIZE; i++) {
     snprintf(hex, 3, "%02X", sign[i]);
     strcat(contents, hex);
   }
-  strcat(contents, ">\n>>\n");
-  fputs(contents, pdf_file);
+  fprintf(pdf_file, "/Contents <%s>\n>>\n", contents);
 
   fclose(pdf_file);
 }
