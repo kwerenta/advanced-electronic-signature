@@ -408,4 +408,6 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
   }
   strcat(contents, ">\n>>\n");
   fputs(contents, pdf_file);
+
+  fclose(pdf_file);
 }
