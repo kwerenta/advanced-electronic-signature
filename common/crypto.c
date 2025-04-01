@@ -287,7 +287,7 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   return plaintext;
 }
 
-void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t *hash_len) {
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash) {
   psa_status_t status = psa_crypto_init();
   if (status != PSA_SUCCESS) {
     return;
@@ -311,7 +311,8 @@ void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t *hash_len) {
     }
   }
 
-  status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, hash_len);
+  size_t hash_len;
+  status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, &hash_len);
   if (status != PSA_SUCCESS) {
     psa_hash_abort(&operation);
     return;
@@ -321,7 +322,7 @@ void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t *hash_len) {
   mbedtls_psa_crypto_free();
 }
 
-void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key, uint8_t *sign, size_t *sign_len) {
+void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
   psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
   psa_key_id_t key_id;
 
@@ -364,7 +365,9 @@ void sign_hash(const uint8_t *hash, size_t hash_len, const uint8_t *private_key,
     return;
   }
 
-  status = psa_sign_hash(key_id, PSA_ALG_RSA_PKCS1V15_SIGN_RAW, hash, hash_len, sign, *sign_len, sign_len);
+  size_t sign_len = PSA_SIGNATURE_MAX_SIZE;
+
+  status = psa_sign_hash(key_id, PSA_ALG_RSA_PKCS1V15_SIGN_RAW, hash, PSA_HASH_MAX_SIZE, sign, sign_len, &sign_len);
   if (status != PSA_SUCCESS) {
     printf("Failed to sign\n");
     return;
@@ -384,10 +387,9 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
   }
 
   uint8_t hash[PSA_HASH_MAX_SIZE], sign[PSA_SIGNATURE_MAX_SIZE];
-  size_t hash_len = PSA_HASH_MAX_SIZE, sign_len = PSA_SIGNATURE_MAX_SIZE;
 
-  compute_pdf_hash(pdf_file, hash, &hash_len);
-  sign_hash(hash, hash_len, private_key, sign, &sign_len);
+  compute_pdf_hash(pdf_file, hash);
+  sign_hash(hash, private_key, sign);
 
   fseek(pdf_file, 0, SEEK_END);
   long size = ftell(pdf_file);
@@ -400,7 +402,7 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
 
   char hex[3] = {0}, contents[2048] = {0};
   sprintf(contents, "/Contents <");
-  for (int i = 0; i < sign_len; i++) {
+  for (int i = 0; i < PSA_SIGNATURE_MAX_SIZE; i++) {
     snprintf(hex, 3, "%02X", sign[i]);
     strcat(contents, hex);
   }
