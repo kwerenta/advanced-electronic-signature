@@ -1,8 +1,6 @@
 #include "crypto.h"
-#include "psa/crypto_sizes.h"
 #include <raylib.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 /**
  *@brief Maxium length of PIN that user can enter
