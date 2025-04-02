@@ -378,6 +378,76 @@ void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
   mbedtls_psa_crypto_free();
 }
 
+uint8_t verify_hash(const uint8_t *hash, const uint8_t *public_key, const uint8_t *signature) {
+  // psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+  // psa_key_id_t key_id;
+
+  // psa_status_t status = psa_crypto_init();
+  // if (status != PSA_SUCCESS) {
+  //   return 0;
+  // }
+
+  // psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_VERIFY_HASH);
+  // psa_set_key_algorithm(&attributes, PSA_ALG_RSA_PKCS1V15_SIGN_RAW);
+  // psa_set_key_type(&attributes, PSA_KEY_TYPE_RSA_PUBLIC_KEY);
+
+  mbedtls_pk_context key_ctx;
+  mbedtls_pk_init(&key_ctx);
+
+  int status = mbedtls_pk_parse_public_keyfile(&key_ctx, "public_key.pem");
+  if (status != 0) {
+    printf("Failed to parse public key\n");
+    mbedtls_pk_free(&key_ctx);
+    return 0;
+  }
+
+  // mbedtls_entropy_context entropy = {0};
+  // mbedtls_ctr_drbg_context rng_ctx = {0};
+
+  // const char *custom = "rsa_gen";
+  // mbedtls_entropy_init(&entropy);
+  // mbedtls_ctr_drbg_init(&rng_ctx);
+
+  // status = mbedtls_ctr_drbg_seed(&rng_ctx, mbedtls_entropy_func, &entropy, (const uint8_t *)custom, strlen(custom));
+  // if (status != 0) {
+  //   free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+  //   printf("Failed to initialize RNG\n");
+  //   return 0;
+  // }
+
+  // uint8_t pkey_der[10240] = {0};
+  // size_t pkey_len = 0;
+  // size_t der_len = mbedtls_pk_write_pubkey_der(&key_ctx, pkey_der, sizeof(pkey_der));
+  // if (der_len <= 0) {
+  //   printf("Failed to convert RSA key to DER");
+  //   return 0;
+  // }
+  // pkey_len = status;
+
+  // status = psa_import_key(&attributes, pkey_der + sizeof(pkey_der) - der_len, der_len, &key_id);
+  // if (status != PSA_SUCCESS) {
+  //   char err_buf[100];
+  //   mbedtls_strerror(status, err_buf, sizeof(err_buf));
+  //   printf("mbed TLS error: %s\n", err_buf);
+  //   return 0;
+  // }
+
+  // status = psa_verify_hash(key_id, PSA_ALG_RSA_PKCS1V15_SIGN_RAW, hash, PSA_HASH_MAX_SIZE, signature,
+  //                          PSA_SIGNATURE_MAX_SIZE);
+  status = mbedtls_pk_verify(&key_ctx, MBEDTLS_MD_SHA256, hash, 0, signature, PSA_SIGNATURE_MAX_SIZE);
+  if (status != PSA_SUCCESS) {
+    printf("Failed to verify\n");
+    return 0;
+  }
+
+  // psa_reset_key_attributes(&attributes);
+  // psa_destroy_key(key_id);
+  // mbedtls_psa_crypto_free();
+  mbedtls_pk_free(&key_ctx);
+
+  return 1;
+}
+
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
   FILE *pdf_file = fopen(pdf_path, "a+");
 
@@ -418,8 +488,6 @@ void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
 
   uint8_t signature_headers = 0;
   char buffer[10240];
-  uint8_t signature[1025] = {0};
-  uint32_t range[4] = {0};
 
   while (fgets(buffer, sizeof(buffer), pdf_file)) {
     if (strstr(buffer, "<</Type /Sig") != NULL && signature_headers == 0)
@@ -440,6 +508,7 @@ void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
     return;
   }
 
+  uint32_t range[4] = {0};
   fgets(buffer, sizeof(buffer), pdf_file);
   int has_found = sscanf(buffer, "/ByteRange [%d %d %d %d]", &range[0], &range[1], &range[2], &range[3]);
   if (has_found != 4) {
@@ -447,12 +516,26 @@ void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
     return;
   }
 
+  char signature_hex[1024 + 1] = {0};
   fgets(buffer, sizeof(buffer), pdf_file);
-  has_found = sscanf(buffer, "/Contents <%1024s>\n>>\n", signature);
+  has_found = sscanf(buffer, "/Contents <%1024s>\n>>\n", signature_hex);
   if (has_found == 0) {
     perror("Failed to load signature content");
     return;
   }
 
+  uint8_t signature[512 + 1] = {0};
+  for (size_t i = 0; i < 512; i++) {
+    sscanf(signature_hex + (2 * i), "%2hhx", &signature[i]);
+  }
+
+  uint8_t hash[PSA_HASH_MAX_SIZE] = {0};
+  compute_pdf_hash(pdf_file, hash);
   fclose(pdf_file);
+
+  uint8_t has_verified = verify_hash(hash, public_key, signature);
+  if (has_verified == 0)
+    printf("Failed to verify signature\n");
+  else
+    printf("Verified successfully\n");
 }
