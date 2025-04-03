@@ -1,7 +1,6 @@
 #include "crypto.h"
 #include <raylib.h>
 #include <stdio.h>
-#include <string.h>
 
 /**
  *@brief Maxium length of PIN that user can enter
