@@ -301,59 +301,37 @@ void compute_pdf_hash(FILE *pdf_file, uint8_t *hash) {
 }
 
 void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
-  psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
-  psa_key_id_t key_id;
+  const char *pers = "rsa_gen";
+  mbedtls_pk_context pk;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
 
-  psa_status_t status = psa_crypto_init();
-  if (status != PSA_SUCCESS) {
+  mbedtls_pk_init(&pk);
+  mbedtls_entropy_init(&entropy);
+  mbedtls_ctr_drbg_init(&ctr_drbg);
+
+  int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t *)pers, strlen(pers));
+  if (ret != 0) {
+    printf("Failed to seed DRBG\n");
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     return;
   }
 
-  psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_HASH);
-  psa_set_key_algorithm(&attributes, PSA_ALG_RSA_PKCS1V15_SIGN_RAW);
-  psa_set_key_type(&attributes, PSA_KEY_TYPE_RSA_KEY_PAIR);
-  psa_set_key_bits(&attributes, RSA_KEY_SIZE);
-
-  mbedtls_pk_context key_ctx;
-  mbedtls_pk_init(&key_ctx);
-
-  status = mbedtls_pk_parse_key(&key_ctx, private_key, strlen((char *)private_key) + 1, NULL, 0, NULL, NULL);
-  if (status != 0) {
+  ret = mbedtls_pk_parse_key(&pk, private_key, strlen((char *)private_key) + 1, NULL, 0, NULL, NULL);
+  if (ret != 0) {
     printf("Failed to parse private key\n");
-    mbedtls_pk_free(&key_ctx);
-    return;
-  }
-
-  // Convert PEM private key to DER format
-  uint8_t pkey_der[RSA_KEY_SIZE];
-  size_t pkey_len = 0;
-  status = mbedtls_pk_write_key_der(&key_ctx, pkey_der, sizeof(pkey_der));
-  if (status < 0) {
-    printf("Failed to convert RSA key to DER");
-    return;
-  }
-  pkey_len = status;
-
-  status = psa_import_key(&attributes, pkey_der + sizeof(pkey_der) - pkey_len, pkey_len, &key_id);
-  if (status != PSA_SUCCESS) {
-
-    char err_buf[100];
-    mbedtls_strerror(status, err_buf, sizeof(err_buf));
-    printf("mbed TLS error: %s\n", err_buf);
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     return;
   }
 
   size_t sign_len = PSA_SIGNATURE_MAX_SIZE;
-
-  status = psa_sign_hash(key_id, PSA_ALG_RSA_PKCS1V15_SIGN_RAW, hash, PSA_HASH_MAX_SIZE, sign, sign_len, &sign_len);
-  if (status != PSA_SUCCESS) {
-    printf("Failed to sign\n");
-    return;
+  ret = mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, hash, 0, sign, PSA_SIGNATURE_MAX_SIZE, &sign_len,
+                        mbedtls_ctr_drbg_random, &ctr_drbg);
+  if (ret != 0) {
+    printf("Failed to sign hash\n");
   }
 
-  psa_reset_key_attributes(&attributes);
-  psa_destroy_key(key_id);
-  mbedtls_psa_crypto_free();
+  free_keygen_context(&pk, &entropy, &ctr_drbg);
 }
 
 uint8_t verify_hash(const uint8_t *hash, const uint8_t *public_key, const uint8_t *signature) {
