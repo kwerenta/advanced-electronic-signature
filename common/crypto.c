@@ -294,6 +294,7 @@ void compute_pdf_hash(FILE *pdf_file, uint8_t *hash) {
   rewind(pdf_file);
 
   uint8_t *pdf_data = malloc(pdf_size);
+  fread(pdf_data, 1, pdf_size, pdf_file);
 
   mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), pdf_data, pdf_size, hash);
 
