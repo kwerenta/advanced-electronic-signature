@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * @brief Size of AES-256 key (256 bits = 32 bytes)
@@ -85,5 +86,35 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
  * @return Null terminated buffer with decrypted private key or NULL if error occur
  */
 uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file);
+
+/**
+ * @brief Computes hash of provided PDF file content
+ * @param pdf_file PDF file whose hash will be computed of
+ * @param[out] hash Buffer where computed hash will be stored. Need to be size of PSA_HASH_MAX_SIZE (64).
+ * @param size Number of bytes in pdf_file starting from beginning that will be used to compute hash. This function will
+ * use whole pdf_file size if 0 is provided.
+ */
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t size);
+/**
+ * @brief Creates signature of hash with provided private key
+ * @param hash Computed hash that will be signed
+ * @param private_key Private key that will be used to sign hash
+ * @param[out] sign Buffer where signature will be stored. Need to be size of PSA_SIGNATURE_MAX_SIZE (512).
+ */
+void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign);
+
+/**
+ * @brief Creates signature for PDF file and adds it to the end of the file
+ * @param pdf_path Path to PDF file that will be signed
+ * @param private_key Decrypted private key that will be used to sign hash
+ */
+void sign_pdf_file(const char *pdf_path, const uint8_t *private_key);
+
+/**
+ * @brief Verifies PDF file signature using provided public key
+ * @param pdf_path Path to PDF file whose hash will be verified
+ * @param public_key_path Path to public key .pem file that will be used for hash verification
+ */
+void verify_pdf_signature(const char *pdf_path, const char *public_key_path);
 
 #endif

@@ -1,5 +1,7 @@
 #include "crypto.h"
 #include "mbedtls/entropy.h"
+#include "mbedtls/md.h"
+#include "psa/crypto_sizes.h"
 #include "psa/crypto_struct.h"
 #include "psa/crypto_types.h"
 #include "psa/crypto_values.h"
@@ -155,32 +157,32 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
     return;
   }
 
-  mbedtls_pk_context key_ctx;
+  mbedtls_pk_context pk;
   mbedtls_entropy_context entropy = {0};
-  mbedtls_ctr_drbg_context rng_ctx = {0};
-  const char *custom = "rsa_gen";
+  mbedtls_ctr_drbg_context ctr_drbg = {0};
+  const char *pers = "rsa_gen";
 
-  mbedtls_pk_init(&key_ctx);
+  mbedtls_pk_init(&pk);
   mbedtls_entropy_init(&entropy);
-  mbedtls_ctr_drbg_init(&rng_ctx);
+  mbedtls_ctr_drbg_init(&ctr_drbg);
 
-  ret = mbedtls_ctr_drbg_seed(&rng_ctx, mbedtls_entropy_func, &entropy, (const uint8_t *)custom, strlen(custom));
+  ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t *)pers, strlen(pers));
   if (ret != 0) {
-    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     printf("Failed to initialize RNG\n");
     return;
   }
 
-  ret = mbedtls_pk_setup(&key_ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
+  ret = mbedtls_pk_setup(&pk, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA));
   if (ret != 0) {
-    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     printf("Failed to initialize RNG\n");
     return;
   }
 
-  ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(key_ctx), mbedtls_ctr_drbg_random, &rng_ctx, RSA_KEY_SIZE, 65537);
+  ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(pk), mbedtls_ctr_drbg_random, &ctr_drbg, RSA_KEY_SIZE, 65537);
   if (ret != 0) {
-    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     printf("Failed to generate RSA keypair\n");
     return;
   }
@@ -189,13 +191,13 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
 
   FILE *private_key_file_fp = fopen(private_key_file, "wb");
   if (private_key_file_fp == NULL) {
-    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     perror("Failed to open private key file");
     return;
   }
 
   size_t key_len = RSA_KEY_SIZE * 2;
-  mbedtls_pk_write_key_pem(&key_ctx, priv_key, key_len);
+  mbedtls_pk_write_key_pem(&pk, priv_key, key_len);
   encrypt_private_key(key, iv, priv_key, enc_priv_key, &key_len);
 
   fwrite(iv, 1, AES_BLOCK_SIZE, private_key_file_fp);
@@ -203,17 +205,17 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   fclose(private_key_file_fp);
 
   FILE *public_key_fp = fopen(public_key_file, "wb");
-  if (private_key_file_fp == NULL) {
-    free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+  if (public_key_file == NULL) {
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
     perror("Failed to open public key file");
     return;
   }
 
-  mbedtls_pk_write_pubkey_pem(&key_ctx, pub_key, RSA_KEY_SIZE * 2);
+  mbedtls_pk_write_pubkey_pem(&pk, pub_key, RSA_KEY_SIZE * 2);
   fwrite(pub_key, 1, strlen((char *)pub_key), public_key_fp);
   fclose(public_key_fp);
 
-  free_keygen_context(&key_ctx, &entropy, &rng_ctx);
+  free_keygen_context(&pk, &entropy, &ctr_drbg);
 }
 
 uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_file) {
@@ -269,19 +271,186 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
     return NULL;
   }
 
-  mbedtls_pk_context key_ctx;
-  mbedtls_pk_init(&key_ctx);
+  mbedtls_pk_context pk;
+  mbedtls_pk_init(&pk);
 
-  ret = mbedtls_pk_parse_key(&key_ctx, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
+  ret = mbedtls_pk_parse_key(&pk, plaintext, plaintext_len + 1, NULL, 0, NULL, NULL);
   if (ret != 0) {
     printf("Failed to parse private key\n");
     free(ciphertext);
     free(plaintext);
-    mbedtls_pk_free(&key_ctx);
+    mbedtls_pk_free(&pk);
     return NULL;
   }
 
   free(ciphertext);
-  mbedtls_pk_free(&key_ctx);
+  mbedtls_pk_free(&pk);
   return plaintext;
+}
+
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t size) {
+  size_t initial_pos = ftell(pdf_file);
+  if (size == 0) {
+    fseek(pdf_file, 0, SEEK_END);
+    size = ftell(pdf_file);
+  }
+
+  rewind(pdf_file);
+
+  uint8_t *pdf_data = malloc(size);
+  fread(pdf_data, 1, size, pdf_file);
+
+  mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), pdf_data, size, hash);
+
+  free(pdf_data);
+  fseek(pdf_file, initial_pos, SEEK_SET);
+}
+
+void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
+  const char *pers = "rsa_gen";
+  mbedtls_pk_context pk;
+  mbedtls_entropy_context entropy;
+  mbedtls_ctr_drbg_context ctr_drbg;
+
+  mbedtls_pk_init(&pk);
+  mbedtls_entropy_init(&entropy);
+  mbedtls_ctr_drbg_init(&ctr_drbg);
+
+  int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t *)pers, strlen(pers));
+  if (ret != 0) {
+    printf("Failed to seed DRBG\n");
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
+    return;
+  }
+
+  ret = mbedtls_pk_parse_key(&pk, private_key, strlen((char *)private_key) + 1, NULL, 0, NULL, NULL);
+  if (ret != 0) {
+    printf("Failed to parse private key\n");
+    free_keygen_context(&pk, &entropy, &ctr_drbg);
+    return;
+  }
+
+  size_t sign_len = PSA_SIGNATURE_MAX_SIZE;
+  ret = mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, hash, 0, sign, PSA_SIGNATURE_MAX_SIZE, &sign_len,
+                        mbedtls_ctr_drbg_random, &ctr_drbg);
+  if (ret != 0) {
+    printf("Failed to sign hash\n");
+  }
+
+  free_keygen_context(&pk, &entropy, &ctr_drbg);
+}
+
+uint8_t verify_hash(const uint8_t *hash, const char *public_key_path, const uint8_t *signature) {
+  mbedtls_pk_context pk;
+  mbedtls_pk_init(&pk);
+
+  int status = mbedtls_pk_parse_public_keyfile(&pk, public_key_path);
+  if (status != 0) {
+    printf("Failed to parse public key\n");
+    mbedtls_pk_free(&pk);
+    return 0;
+  }
+
+  status = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, hash, 0, signature, PSA_SIGNATURE_MAX_SIZE);
+  if (status != PSA_SUCCESS) {
+    printf("Failed to verify hash\n");
+    return 0;
+  }
+  mbedtls_pk_free(&pk);
+
+  return 1;
+}
+
+void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
+  FILE *pdf_file = fopen(pdf_path, "a+");
+
+  if (pdf_file == NULL) {
+    perror("Failed to open PDF file");
+    return;
+  }
+
+  uint8_t hash[PSA_HASH_MAX_SIZE], sign[PSA_SIGNATURE_MAX_SIZE];
+
+  compute_pdf_hash(pdf_file, hash, 0);
+  sign_hash(hash, private_key, sign);
+
+  fseek(pdf_file, 0, SEEK_END);
+  long size = ftell(pdf_file);
+
+  fputs("<</Type /Sig\n/Filter /Adobe.PPKLite\n/SubFilter /adbe.pkcs7.detached\n", pdf_file);
+
+  fprintf(pdf_file, "/ByteRange [0 %lu %lu 0]\n", size, size);
+
+  char hex[3] = {0}, contents[1025] = {0};
+  for (int i = 0; i < PSA_SIGNATURE_MAX_SIZE; i++) {
+    snprintf(hex, 3, "%02X", sign[i]);
+    strcat(contents, hex);
+  }
+  fprintf(pdf_file, "/Contents <%s>\n>>\n", contents);
+
+  fclose(pdf_file);
+}
+
+void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
+  FILE *pdf_file = fopen(pdf_path, "r");
+
+  if (pdf_file == NULL) {
+    perror("Failed to open PDF file");
+    return;
+  }
+
+  uint8_t signature_headers = 0;
+  char buffer[10240];
+
+  while (fgets(buffer, sizeof(buffer), pdf_file)) {
+    if (strstr(buffer, "<</Type /Sig") != NULL && signature_headers == 0)
+      signature_headers++;
+    else if (strstr(buffer, "/Filter /Adobe.PPKLite") != NULL && signature_headers == 1)
+      signature_headers++;
+    else if (strstr(buffer, "/SubFilter /adbe.pkcs7.detached") != NULL && signature_headers == 2)
+      signature_headers++;
+
+    if (signature_headers == 3) {
+      break;
+    }
+  }
+
+  if (signature_headers != 3) {
+    perror("Failed to find signature in PDF file");
+    fclose(pdf_file);
+    return;
+  }
+
+  size_t range[4] = {0};
+  fgets(buffer, sizeof(buffer), pdf_file);
+  int has_found = sscanf(buffer, "/ByteRange [%zd %zd %zd %zd]", &range[0], &range[1], &range[2], &range[3]);
+  if (has_found != 4) {
+    fclose(pdf_file);
+    perror("Failed to load byte range");
+    return;
+  }
+
+  char signature_hex[1024 + 1] = {0};
+  fgets(buffer, sizeof(buffer), pdf_file);
+  has_found = sscanf(buffer, "/Contents <%1024s>\n>>\n", signature_hex);
+  if (has_found == 0) {
+    fclose(pdf_file);
+    perror("Failed to load signature content");
+    return;
+  }
+
+  uint8_t signature[512 + 1] = {0};
+  for (size_t i = 0; i < 512; i++) {
+    sscanf(signature_hex + (2 * i), "%2hhx", &signature[i]);
+  }
+
+  uint8_t hash[PSA_HASH_MAX_SIZE] = {0};
+  compute_pdf_hash(pdf_file, hash, range[1]);
+  fclose(pdf_file);
+
+  uint8_t has_verified = verify_hash(hash, public_key_path, signature);
+  if (has_verified == 0)
+    printf("Failed to verify signature\n");
+  else
+    printf("Verified successfully\n");
 }

@@ -31,7 +31,6 @@ Both applications are cross-platform and available on Windows, Linux and MacOS u
 - **CMake:** For managing the build process.
 - **Doxygen:** For generating the project documentation.
 - **C/C++ Compiler:** Compatible with your operating system.
-- **OpenSSL:** Implementations of AES, RSA, and SHA as required.
 
 ### Building the Project
 

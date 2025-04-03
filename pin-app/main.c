@@ -1,7 +1,6 @@
 #include "crypto.h"
 #include <raylib.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 /**
  *@brief Maxium length of PIN that user can enter
@@ -95,10 +94,6 @@ int main() {
   clay_set_measure_text(fonts);
 
   PinData data = {.pin = {}, .curr_index = 0};
-
-  const char *pin = "1234";
-  uint8_t *pkey = load_encrypted_private_key(pin, "encrypted_private_key.pem");
-  free(pkey);
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
