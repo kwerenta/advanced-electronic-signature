@@ -425,6 +425,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   fgets(buffer, sizeof(buffer), pdf_file);
   int has_found = sscanf(buffer, "/ByteRange [%zd %zd %zd %zd]", &range[0], &range[1], &range[2], &range[3]);
   if (has_found != 4) {
+    fclose(pdf_file);
     perror("Failed to load byte range");
     return;
   }
@@ -433,6 +434,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   fgets(buffer, sizeof(buffer), pdf_file);
   has_found = sscanf(buffer, "/Contents <%1024s>\n>>\n", signature_hex);
   if (has_found == 0) {
+    fclose(pdf_file);
     perror("Failed to load signature content");
     return;
   }
