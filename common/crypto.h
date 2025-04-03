@@ -108,6 +108,6 @@ void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign);
  */
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key);
 
-void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key);
+void verify_pdf_signature(const char *pdf_path, const char *public_key_path);
 
 #endif

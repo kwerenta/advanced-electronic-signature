@@ -335,11 +335,11 @@ void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
   free_keygen_context(&pk, &entropy, &ctr_drbg);
 }
 
-uint8_t verify_hash(const uint8_t *hash, const uint8_t *public_key, const uint8_t *signature) {
+uint8_t verify_hash(const uint8_t *hash, const char *public_key_path, const uint8_t *signature) {
   mbedtls_pk_context pk;
   mbedtls_pk_init(&pk);
 
-  int status = mbedtls_pk_parse_public_keyfile(&pk, "public_key.pem");
+  int status = mbedtls_pk_parse_public_keyfile(&pk, public_key_path);
   if (status != 0) {
     printf("Failed to parse public key\n");
     mbedtls_pk_free(&pk);
@@ -386,7 +386,7 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
   fclose(pdf_file);
 }
 
-void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
+void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   FILE *pdf_file = fopen(pdf_path, "r");
 
   if (pdf_file == NULL) {
@@ -441,7 +441,7 @@ void verify_pdf_signature(const char *pdf_path, const uint8_t *public_key) {
   compute_pdf_hash(pdf_file, hash);
   fclose(pdf_file);
 
-  uint8_t has_verified = verify_hash(hash, public_key, signature);
+  uint8_t has_verified = verify_hash(hash, public_key_path, signature);
   if (has_verified == 0)
     printf("Failed to verify signature\n");
   else
