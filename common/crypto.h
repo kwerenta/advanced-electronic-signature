@@ -34,7 +34,7 @@
 int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv);
 /**
  * @brief Internal function that simplifies AES encryption process
- * @param decrypt Boolean that determines wheter it should perform decryption or encryption
+ * @param decrypt Boolean that determines whether it should perform decryption or encryption
  * @param[in] key Key that will be used to decrypt/encrypt input data
  * @param[in] iv Initialization Vector that will be used to decrypt/encrypt input data
  * @param[in] input Data to decrypt/encrypt
