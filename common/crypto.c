@@ -288,17 +288,22 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
   return plaintext;
 }
 
-void compute_pdf_hash(FILE *pdf_file, uint8_t *hash) {
-  fseek(pdf_file, 0, SEEK_END);
-  size_t pdf_size = ftell(pdf_file);
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t size) {
+  size_t initial_pos = ftell(pdf_file);
+  if (size == 0) {
+    fseek(pdf_file, 0, SEEK_END);
+    size = ftell(pdf_file);
+  }
+
   rewind(pdf_file);
 
-  uint8_t *pdf_data = malloc(pdf_size);
-  fread(pdf_data, 1, pdf_size, pdf_file);
+  uint8_t *pdf_data = malloc(size);
+  fread(pdf_data, 1, size, pdf_file);
 
-  mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), pdf_data, pdf_size, hash);
+  mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), pdf_data, size, hash);
 
   free(pdf_data);
+  fseek(pdf_file, initial_pos, SEEK_SET);
 }
 
 void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
@@ -366,7 +371,7 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
 
   uint8_t hash[PSA_HASH_MAX_SIZE], sign[PSA_SIGNATURE_MAX_SIZE];
 
-  compute_pdf_hash(pdf_file, hash);
+  compute_pdf_hash(pdf_file, hash, 0);
   sign_hash(hash, private_key, sign);
 
   fseek(pdf_file, 0, SEEK_END);
@@ -416,9 +421,9 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
     return;
   }
 
-  uint32_t range[4] = {0};
+  size_t range[4] = {0};
   fgets(buffer, sizeof(buffer), pdf_file);
-  int has_found = sscanf(buffer, "/ByteRange [%d %d %d %d]", &range[0], &range[1], &range[2], &range[3]);
+  int has_found = sscanf(buffer, "/ByteRange [%zd %zd %zd %zd]", &range[0], &range[1], &range[2], &range[3]);
   if (has_found != 4) {
     perror("Failed to load byte range");
     return;
@@ -438,7 +443,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   }
 
   uint8_t hash[PSA_HASH_MAX_SIZE] = {0};
-  compute_pdf_hash(pdf_file, hash);
+  compute_pdf_hash(pdf_file, hash, range[1]);
   fclose(pdf_file);
 
   uint8_t has_verified = verify_hash(hash, public_key_path, signature);

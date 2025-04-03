@@ -91,8 +91,10 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
  * @brief Computes hash of provided PDF file content
  * @param pdf_file PDF file whose hash will be computed of
  * @paramout hash Buffer where computed hash will be stored. Need to be size of PSA_HASH_MAX_SIZE (64).
+ * @param size Number of bytes in pdf_file starting from beginning that will be used to compute hash. This function will
+ * use whole pdf_file size if 0 is provided.
  */
-void compute_pdf_hash(FILE *pdf_file, uint8_t *hash);
+void compute_pdf_hash(FILE *pdf_file, uint8_t *hash, size_t size);
 /**
  * @brief Creates signature of hash with provided private key
  * @param hash Computed hash that will be signed
