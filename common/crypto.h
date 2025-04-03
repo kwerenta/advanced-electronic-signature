@@ -110,6 +110,11 @@ void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign);
  */
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key);
 
+/**
+ * @brief Verifies PDF file signature using provided public key
+ * @param pdf_path Path to PDF file whose hash will be verified
+ * @param public_key_path Path to public key .pem file that will be used for hash verification
+ */
 void verify_pdf_signature(const char *pdf_path, const char *public_key_path);
 
 #endif
