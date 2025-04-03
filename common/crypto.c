@@ -205,7 +205,7 @@ void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_fil
   fclose(private_key_file_fp);
 
   FILE *public_key_fp = fopen(public_key_file, "wb");
-  if (private_key_file_fp == NULL) {
+  if (public_key_file == NULL) {
     free_keygen_context(&pk, &entropy, &ctr_drbg);
     perror("Failed to open public key file");
     return;
