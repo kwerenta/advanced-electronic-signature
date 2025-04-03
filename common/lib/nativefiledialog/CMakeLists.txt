@@ -12,3 +12,15 @@ add_library(nfd STATIC
 )
 
 target_include_directories(nfd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
+
+if (UNIX AND NOT APPLE)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+
+    target_include_directories(nfd PUBLIC ${GTK3_INCLUDE_DIRS})
+    target_link_directories(nfd PUBLIC ${GTK3_INCLUDE_DIRS})
+
+    add_definitions(${GTK3_CFLAGS_OTHER})
+
+    target_link_libraries(nfd ${GTK3_LIBRARIES})
+endif()
