@@ -1,6 +1,6 @@
 if (WIN32)
   set(OS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/nfd_win.cpp)
-elseif (UNIX and not APPLE)
+elseif (UNIX AND NOT APPLE)
   set(OS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/nfd_gtk.c)
 else()
   set(OS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/nfd_cocoa.m)
@@ -10,3 +10,5 @@ add_library(nfd STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/nfd_common.c
   ${OS_SOURCE}
 )
+
+target_include_directories(nfd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
