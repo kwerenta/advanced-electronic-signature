@@ -1,5 +1,6 @@
 #include "crypto.h"
 #include "mbedtls/entropy.h"
+#include "mbedtls/md.h"
 #include "psa/crypto_sizes.h"
 #include "psa/crypto_struct.h"
 #include "psa/crypto_types.h"
@@ -288,38 +289,15 @@ uint8_t *load_encrypted_private_key(const char *pin, const char *private_key_fil
 }
 
 void compute_pdf_hash(FILE *pdf_file, uint8_t *hash) {
-  psa_status_t status = psa_crypto_init();
-  if (status != PSA_SUCCESS) {
-    return;
-  }
+  fseek(pdf_file, 0, SEEK_END);
+  size_t pdf_size = ftell(pdf_file);
+  rewind(pdf_file);
 
-  psa_algorithm_t alg = PSA_ALG_SHA_256;
-  psa_hash_operation_t operation = PSA_HASH_OPERATION_INIT;
+  uint8_t *pdf_data = malloc(pdf_size);
 
-  status = psa_hash_setup(&operation, alg);
-  if (status != PSA_SUCCESS) {
-    return;
-  }
+  mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), pdf_data, pdf_size, hash);
 
-  uint8_t buffer[RSA_KEY_SIZE];
-  size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), pdf_file)) > 0) {
-    status = psa_hash_update(&operation, buffer, bytes_read);
-    if (status != PSA_SUCCESS) {
-      psa_hash_abort(&operation);
-      return;
-    }
-  }
-
-  size_t hash_len;
-  status = psa_hash_finish(&operation, hash, PSA_HASH_MAX_SIZE, &hash_len);
-  if (status != PSA_SUCCESS) {
-    psa_hash_abort(&operation);
-    return;
-  }
-
-  psa_hash_abort(&operation);
-  mbedtls_psa_crypto_free();
+  free(pdf_data);
 }
 
 void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
