@@ -6,10 +6,10 @@
 
 /**
  * @brief Internal version of find_private_key() function that is called with proper paths depending on operating system
- * @param path Path where volumes will be searched
- * @param out_file Buffer where the path to the found file will be stored
+ * @param[in] path Path where volumes will be searched
+ * @param[out] out_file Buffer where the path to the found file will be stored
  */
-uint8_t __find_private_key(const char *path, const char *out_file) {
+uint8_t __find_private_key(const char *path, char *out_file) {
   struct dirent *entry;
   struct stat statbuf;
 
@@ -23,12 +23,12 @@ uint8_t __find_private_key(const char *path, const char *out_file) {
     if (entry->d_name[0] == '.')
       continue;
 
-    char full_path[1024], key_file[128];
+    char full_path[1024];
     snprintf(full_path, sizeof(full_path), "%s%s", path, entry->d_name);
 
     // Check if it's a directory (mounted storage)
     if (stat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-      uint8_t has_found = search_for_key(full_path, key_file);
+      uint8_t has_found = search_for_key(full_path, out_file);
 
       if (has_found == 1) {
         closedir(dir);
