@@ -25,4 +25,6 @@ endif()
 add_library(${PROJECT_NAME} STATIC lib/clay-renderer.c clay-shared.c crypto.c util.c ${OS_SOURCE})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/nativefiledialog)
 target_link_libraries(${PROJECT_NAME} PUBLIC mbedcrypto raylib)

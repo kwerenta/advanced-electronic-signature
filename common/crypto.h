@@ -114,7 +114,9 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key);
  * @brief Verifies PDF file signature using provided public key
  * @param[in] pdf_path Path to PDF file whose hash will be verified
  * @param[in] public_key_path Path to public key .pem file that will be used for hash verification
+ * @retval 1 On success
+ * @retval 0 On failure
  */
-void verify_pdf_signature(const char *pdf_path, const char *public_key_path);
+uint8_t verify_pdf_signature(const char *pdf_path, const char *public_key_path);
 
 #endif
