@@ -6,7 +6,7 @@
 /**
  * Extension of private key file
  */
-#define PRIVATE_KEY_FILE_EXT ".pem"
+#define PRIVATE_KEY_FILE_EXT ".key"
 
 /**
  * @brief Searches for a private key file (with PRIVATE_KEY_FILE_EXT extension) in specified directory
