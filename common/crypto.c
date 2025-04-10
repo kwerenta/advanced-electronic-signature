@@ -391,12 +391,12 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
   fclose(pdf_file);
 }
 
-void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
+uint8_t verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   FILE *pdf_file = fopen(pdf_path, "r");
 
   if (pdf_file == NULL) {
     perror("Failed to open PDF file");
-    return;
+    return 0;
   }
 
   uint8_t signature_headers = 0;
@@ -418,7 +418,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   if (signature_headers != 3) {
     perror("Failed to find signature in PDF file");
     fclose(pdf_file);
-    return;
+    return 0;
   }
 
   size_t range[4] = {0};
@@ -427,7 +427,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   if (has_found != 4) {
     fclose(pdf_file);
     perror("Failed to load byte range");
-    return;
+    return 0;
   }
 
   char signature_hex[1024 + 1] = {0};
@@ -436,7 +436,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
   if (has_found == 0) {
     fclose(pdf_file);
     perror("Failed to load signature content");
-    return;
+    return 0;
   }
 
   uint8_t signature[512 + 1] = {0};
@@ -450,7 +450,7 @@ void verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
 
   uint8_t has_verified = verify_hash(hash, public_key_path, signature);
   if (has_verified == 0)
-    printf("Failed to verify signature\n");
+    return 0;
   else
-    printf("Verified successfully\n");
+    return 1;
 }
