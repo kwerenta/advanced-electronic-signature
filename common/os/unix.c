@@ -2,6 +2,7 @@
 
 #include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 /**
@@ -53,6 +54,11 @@ uint8_t find_private_key(char *out_file) {
   if (has_found == 1)
     return 1;
 
-  return __find_private_key("/run/media/", out_file);
+  char *user = getenv("USER");
+  char alt_path[512];
+
+  snprintf(alt_path, sizeof(alt_path), "%s%s/", "/run/media/", user);
+
+  return __find_private_key(alt_path, out_file);
 #endif
 }
