@@ -59,7 +59,7 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
 
   if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
     if (data->curr_index > 0) {
-      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.pem", "public_key.pem");
+      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
       printf("Created RSA key pair with PIN: %s\n", data->pin);
       return;
     }
@@ -93,9 +93,9 @@ int main() {
                      .layoutDirection = CLAY_TOP_TO_BOTTOM},
           .backgroundColor = {72, 84, 96, 255}}) {
 
-     clay_layout_pin(&data);
+      clay_layout_pin(&data);
 
-     CLAY_TEXT(CLAY_STRING("Enter PIN that will be used to encrypt private key"),
+      CLAY_TEXT(CLAY_STRING("Enter PIN that will be used to encrypt private key"),
                 CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
 
       CLAY({.id = CLAY_ID("CreateButton"),
