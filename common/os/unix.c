@@ -9,7 +9,7 @@
  * @param[in] path Path where volumes will be searched
  * @param[out] out_file Buffer where the path to the found file will be stored
  */
-uint8_t __find_private_key(const char *path, char *out_file) {
+uint8_t __find_private_key(const char *path, char *key_file_path) {
   struct dirent *entry;
   struct stat statbuf;
 
@@ -28,7 +28,7 @@ uint8_t __find_private_key(const char *path, char *out_file) {
 
     // Check if it's a directory (mounted storage)
     if (stat(full_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-      uint8_t has_found = search_for_key(full_path, out_file);
+      uint8_t has_found = search_for_key(full_path, key_file_path);
 
       if (has_found == 1) {
         closedir(dir);
