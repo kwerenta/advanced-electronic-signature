@@ -328,9 +328,9 @@ void layout_verify(Context *ctx) {
                    .childGap = 16},
         .backgroundColor = COLOR_BACKGROUND}) {
 
-    if (ctx->sign_status == SUCCESS)
+    if (ctx->verify_status == SUCCESS)
       CLAY_TEXT(CLAY_STRING("Verification successful"), CLAY_TEXT_CONFIG(SUCCESS_TEXT_CONFIG));
-    else if (ctx->sign_status == FAILURE)
+    else if (ctx->verify_status == FAILURE)
       CLAY_TEXT(CLAY_STRING("Verification failed"), CLAY_TEXT_CONFIG(FAILURE_TEXT_CONFIG));
 
     uint32_t pdf_len = strlen(ctx->pdf_file);
