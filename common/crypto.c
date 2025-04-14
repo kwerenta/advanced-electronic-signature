@@ -362,7 +362,7 @@ uint8_t verify_hash(const uint8_t *hash, const char *public_key_path, const uint
 }
 
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
-  FILE *pdf_file = fopen(pdf_path, "a+");
+  FILE *pdf_file = fopen(pdf_path, "a+b");
 
   if (pdf_file == NULL) {
     perror("Failed to open PDF file");
