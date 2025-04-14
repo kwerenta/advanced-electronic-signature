@@ -15,7 +15,7 @@ uint8_t find_private_key(char *key_file_path) {
       char path[3] = {letter, ':', '\0'};
       UINT type = GetDriveTypeA(path);
       if (type == DRIVE_REMOVABLE) {
-        if (search_for_key(path, key_file_path) == 1)
+        if (search_for_private_key(path, key_file_path) == 1)
           return 1;
       }
     }

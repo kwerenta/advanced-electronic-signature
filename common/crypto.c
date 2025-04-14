@@ -362,7 +362,7 @@ uint8_t verify_hash(const uint8_t *hash, const char *public_key_path, const uint
 }
 
 void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
-  FILE *pdf_file = fopen(pdf_path, "a+");
+  FILE *pdf_file = fopen(pdf_path, "a+b");
 
   if (pdf_file == NULL) {
     perror("Failed to open PDF file");
@@ -392,7 +392,7 @@ void sign_pdf_file(const char *pdf_path, const uint8_t *private_key) {
 }
 
 uint8_t verify_pdf_signature(const char *pdf_path, const char *public_key_path) {
-  FILE *pdf_file = fopen(pdf_path, "r");
+  FILE *pdf_file = fopen(pdf_path, "rb");
 
   if (pdf_file == NULL) {
     perror("Failed to open PDF file");
@@ -400,7 +400,7 @@ uint8_t verify_pdf_signature(const char *pdf_path, const char *public_key_path) 
   }
 
   uint8_t signature_headers = 0;
-  char buffer[10240];
+  char buffer[10240] = {0};
 
   while (fgets(buffer, sizeof(buffer), pdf_file)) {
     if (strstr(buffer, "<</Type /Sig") != NULL && signature_headers == 0)
