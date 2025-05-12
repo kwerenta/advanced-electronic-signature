@@ -1,6 +1,7 @@
 #include "crypto.h"
 #include <raylib.h>
 #include <stdio.h>
+#include <threads.h>
 
 /**
  * @brief Required by Clay library to work properly
@@ -21,6 +22,27 @@ const Clay_Color COLOR_BUTTON_BG = {5, 196, 107, 255};
  * @brief Color for button background when it is hovered
  */
 const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
+/**
+ * @brief Color for button background when it is disabled
+ */
+const Clay_Color COLOR_BUTTON_DISABLED = {33, 33, 33, 255};
+/**
+ * @brief Color for successful state
+ */
+const Clay_Color COLOR_SUCCESS = {11, 232, 129, 255};
+/**
+ * @brief Color for warning state
+ */
+const Clay_Color COLOR_WARNING = {225, 138, 50, 255};
+
+/**
+ * @brief Bool indicating wheter key pair is currently being generated
+ */
+bool isGenerating = false;
+/**
+ * @brief Bool indicating wheter key pair has already been generated
+ */
+bool hasGenerated = false;
 
 /**
  * @brief Handles PIN input using keyboard
@@ -28,6 +50,8 @@ const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
  * @param pin PIN storage
  */
 void handle_controls(PinData *data) {
+  if (isGenerating)
+    return;
 
   int key = GetCharPressed();
   while (key > 0) {
@@ -51,6 +75,18 @@ void handle_controls(PinData *data) {
   }
 }
 
+int generate_key(void *data_ptr) {
+  isGenerating = true;
+  hasGenerated = false;
+
+  PinData *data = (PinData *)data_ptr;
+  generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
+
+  isGenerating = false;
+  hasGenerated = true;
+  return 0;
+}
+
 /**
  * @brief Detects if button was clicked and tries to generate RSA key pair
  */
@@ -58,9 +94,14 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
   PinData *data = (PinData *)user_data;
 
   if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
+    if (isGenerating) {
+      return;
+    }
+
     if (data->curr_index > 0) {
-      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
-      printf("Created RSA key pair with PIN: %s\n", data->pin);
+      thrd_t thread;
+      thrd_create(&thread, generate_key, data);
+      thrd_detach(thread);
       return;
     }
 
@@ -101,10 +142,19 @@ int main() {
       CLAY({.id = CLAY_ID("CreateButton"),
             .layout = {.padding = {12, 16, 16, 12}},
             .cornerRadius = CLAY_CORNER_RADIUS(4),
-            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG}) {
+            .backgroundColor = isGenerating     ? COLOR_BUTTON_DISABLED
+                               : Clay_Hovered() ? COLOR_BUTTON_HOVER
+                                                : COLOR_BUTTON_BG}) {
         Clay_OnHover(handleCreateButtonInteraction, (intptr_t)&data);
         CLAY_TEXT(CLAY_STRING("Generate RSA key pair"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
       }
+
+      if (isGenerating)
+        CLAY_TEXT(CLAY_STRING("Generating keys..."), CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_WHITE}));
+
+      if (hasGenerated)
+        CLAY_TEXT(CLAY_STRING("Successfully generated RSA key pair!"),
+                  CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_SUCCESS}));
     }
 
     Clay_RenderCommandArray renderCommands = Clay_EndLayout();
