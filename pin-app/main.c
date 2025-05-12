@@ -1,6 +1,5 @@
 #include "crypto.h"
 #include <raylib.h>
-#include <stdio.h>
 #include <threads.h>
 
 /**
@@ -27,7 +26,7 @@ const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
  */
 const Clay_Color COLOR_BUTTON_DISABLED = {33, 33, 33, 255};
 /**
- * @brief Color for successful state
+ * @brief Color for success state
  */
 const Clay_Color COLOR_SUCCESS = {11, 232, 129, 255};
 /**
@@ -43,6 +42,10 @@ bool isGenerating = false;
  * @brief Bool indicating wheter key pair has already been generated
  */
 bool hasGenerated = false;
+/**
+ * @brief Bool indicating wheter PIN is too short
+ */
+bool isTooShort = false;
 
 /**
  * @brief Handles PIN input using keyboard
@@ -55,6 +58,7 @@ void handle_controls(PinData *data) {
 
   int key = GetCharPressed();
   while (key > 0) {
+    isTooShort = true;
     // NOTE: Only allow ASCII printable characters
     if (key >= 32 && key <= 126) {
       data->pin[data->curr_index] = key;
@@ -77,7 +81,6 @@ void handle_controls(PinData *data) {
 
 int generate_key(void *data_ptr) {
   isGenerating = true;
-  hasGenerated = false;
 
   PinData *data = (PinData *)data_ptr;
   generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
@@ -98,14 +101,16 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
       return;
     }
 
-    if (data->curr_index > 0) {
-      thrd_t thread;
-      thrd_create(&thread, generate_key, data);
-      thrd_detach(thread);
+    hasGenerated = false;
+
+    if (data->curr_index == 0) {
+      isTooShort = true;
       return;
     }
 
-    printf("PIN is too short\n");
+    thrd_t thread;
+    thrd_create(&thread, generate_key, data);
+    thrd_detach(thread);
   }
 }
 
@@ -151,10 +156,13 @@ int main() {
 
       if (isGenerating)
         CLAY_TEXT(CLAY_STRING("Generating keys..."), CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_WHITE}));
-
-      if (hasGenerated)
+      else if (hasGenerated)
         CLAY_TEXT(CLAY_STRING("Successfully generated RSA key pair!"),
                   CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_SUCCESS}));
+      else if (isTooShort)
+        CLAY_TEXT(CLAY_STRING("PIN is too short"), CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_WARNING}));
+      else
+        CLAY_TEXT(CLAY_STRING(" "), CLAY_TEXT_CONFIG({.fontSize = 32}));
     }
 
     Clay_RenderCommandArray renderCommands = Clay_EndLayout();
