@@ -1,6 +1,6 @@
 #include "crypto.h"
 #include <raylib.h>
-#include <threads.h>
+#include <tinycthread.h>
 
 /**
  * @brief Required by Clay library to work properly
