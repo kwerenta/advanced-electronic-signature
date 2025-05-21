@@ -12,7 +12,7 @@
 void HandleClayErrors(Clay_ErrorData errorData) { printf("CLAY ERROR: %s", errorData.errorText.chars); }
 
 void clay_init(const char *window_title) {
-  Clay_Raylib_Initialize(1280, 720, window_title, FLAG_WINDOW_RESIZABLE);
+  Clay_Raylib_Initialize(1280, 720, window_title, FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
 
   uint64_t totalMemorySize = Clay_MinMemorySize();
   Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, malloc(totalMemorySize));
@@ -55,7 +55,7 @@ void clay_layout_pin(PinData *data) {
     for (uint8_t i = 0; i < MAX_PIN_LENGTH; i++) {
       CLAY({.id = CLAY_IDI_LOCAL("PinNumber", i),
             .layout = {.sizing = {CLAY_SIZING_FIXED(36), CLAY_SIZING_FIXED(48)},
-                        .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
+                       .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
             .cornerRadius = CLAY_CORNER_RADIUS(4),
             .border = get_pin_box_border(data->curr_index, i),
             .backgroundColor = {210, 218, 226, 255}}) {
