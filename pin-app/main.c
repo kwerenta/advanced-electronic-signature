@@ -1,6 +1,9 @@
 #include "crypto.h"
+#include "nfd.h"
 #include <raylib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /**
  * @brief Required by Clay library to work properly
@@ -59,8 +62,20 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
 
   if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
     if (data->curr_index > 0) {
-      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
-      printf("Created RSA key pair with PIN: %s\n", data->pin);
+      nfdchar_t *path = NULL;
+      nfdresult_t res = NFD_PickFolder(NULL, &path);
+
+      if (res == NFD_OKAY) {
+        char private_key_path[128];
+        char public_key_path[128];
+        snprintf(private_key_path, 128, "%s/%s", path, "encrypted_private_key.key");
+        snprintf(public_key_path, 128, "%s/%s", path, "public_key.pub");
+
+        generate_encrypted_RSA_keypair(data->pin, private_key_path, public_key_path);
+        printf("Created RSA key pair with PIN: %s\n", data->pin);
+      }
+
+      free(path);
       return;
     }
 
