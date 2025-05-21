@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tinycthread.h>
 /**
  * @brief Required by Clay library to work properly
  */
@@ -45,6 +46,7 @@ typedef struct {
   char pdf_file[128];
   OperationStatus sign_status;
   OperationStatus verify_status;
+  OperationStatus key_search_status;
 } Context;
 
 /**
@@ -273,7 +275,7 @@ void layout_sign(Context *ctx) {
 
     CLAY_TEXT(((Clay_String){.chars = ctx->pdf_file, .length = pdf_len}), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
 
-    if (find_private_key(ctx->sign_key_file) == 0) {
+    if (ctx->key_search_status != SUCCESS) {
       CLAY_TEXT(CLAY_STRING("Waiting for pendrive to be plugged in ..."), CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
     } else {
       uint32_t key_len = strlen(ctx->sign_key_file);
@@ -379,6 +381,18 @@ void layout_verify(Context *ctx) {
   }
 }
 
+int find_key_handler(void *data) {
+  Context *ctx = (Context *)data;
+  struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
+
+  while (find_private_key(ctx->sign_key_file) == 0)
+    thrd_sleep(&ts, NULL);
+
+  ctx->key_search_status = SUCCESS;
+
+  return 0;
+}
+
 int main() {
   clay_init("Signature App");
 
@@ -392,7 +406,8 @@ int main() {
                  .verify_key_file = {},
                  .pdf_file = {},
                  .sign_status = NONE,
-                 .verify_status = NONE};
+                 .verify_status = NONE,
+                 .key_search_status = FAILURE};
 
   while (!WindowShouldClose()) {
     clay_handle_movement();
@@ -406,6 +421,13 @@ int main() {
       layout_initial(&ctx);
       break;
     case MODE_SIGN:
+      if (ctx.key_search_status == FAILURE) {
+        ctx.key_search_status = NONE;
+        thrd_t thread;
+        thrd_create(&thread, find_key_handler, &ctx);
+        thrd_detach(thread);
+      }
+
       layout_sign(&ctx);
       break;
     case MODE_VERIFY:
