@@ -58,7 +58,7 @@ void handle_controls(PinData *data) {
 
   int key = GetCharPressed();
   while (key > 0) {
-    isTooShort = true;
+    isTooShort = false;
     // NOTE: Only allow ASCII printable characters
     if (key >= 32 && key <= 126) {
       data->pin[data->curr_index] = key;
