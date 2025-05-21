@@ -78,7 +78,10 @@ void handle_controls(PinData *data) {
     return;
   }
 }
-
+/*
+ * @brief Thread handler function that is looking for private key every second
+ * @param data_ptr Pointer to PinData structure that acts like application context
+ */
 int generate_key(void *data_ptr) {
   isGenerating = true;
 

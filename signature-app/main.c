@@ -383,6 +383,10 @@ void layout_verify(Context *ctx) {
   }
 }
 
+/*
+ * @brief Thread handler function that is looking for private key every second
+ * @param data Pointer to the application's context
+ */
 int find_key_handler(void *data) {
   Context *ctx = (Context *)data;
   struct timespec ts = {.tv_sec = 1, .tv_nsec = 0};
