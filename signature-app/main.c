@@ -84,8 +84,10 @@ void handle_controls(Context *ctx) {
 uint8_t sign(Context *ctx) {
   uint8_t *private_key = load_encrypted_private_key(ctx->pin_data.pin, ctx->sign_key_file);
 
-  if (private_key == NULL)
+  if (private_key == NULL) {
+    ctx->key_search_status = FAILURE;
     return 0;
+  }
 
   sign_pdf_file(ctx->pdf_file, private_key);
 
