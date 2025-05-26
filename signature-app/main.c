@@ -6,6 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Makes sure that raylib.h doesn't collide with windows.h
+// which is included in tinycthread.h
+#ifdef _WIN32
+#define NOGDI
+#define NOUSER
+#endif
+
 #include <tinycthread.h>
 /**
  * @brief Required by Clay library to work properly
