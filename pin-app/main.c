@@ -1,6 +1,14 @@
 #include "crypto.h"
 #include <raylib.h>
-#include <stdio.h>
+
+// Makes sure that raylib.h doesn't collide with windows.h
+// which is included in tinycthread.h
+#ifdef _WIN32
+#define NOGDI
+#define NOUSER
+#endif
+
+#include <tinycthread.h>
 
 /**
  * @brief Required by Clay library to work properly
@@ -21,6 +29,31 @@ const Clay_Color COLOR_BUTTON_BG = {5, 196, 107, 255};
  * @brief Color for button background when it is hovered
  */
 const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
+/**
+ * @brief Color for button background when it is disabled
+ */
+const Clay_Color COLOR_BUTTON_DISABLED = {33, 33, 33, 255};
+/**
+ * @brief Color for success state
+ */
+const Clay_Color COLOR_SUCCESS = {11, 232, 129, 255};
+/**
+ * @brief Color for warning state
+ */
+const Clay_Color COLOR_WARNING = {225, 138, 50, 255};
+
+/**
+ * @brief Bool indicating wheter key pair is currently being generated
+ */
+bool isGenerating = false;
+/**
+ * @brief Bool indicating wheter key pair has already been generated
+ */
+bool hasGenerated = false;
+/**
+ * @brief Bool indicating wheter PIN is too short
+ */
+bool isTooShort = false;
 
 /**
  * @brief Handles PIN input using keyboard
@@ -28,9 +61,12 @@ const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
  * @param pin PIN storage
  */
 void handle_controls(PinData *data) {
+  if (isGenerating)
+    return;
 
   int key = GetCharPressed();
   while (key > 0) {
+    isTooShort = false;
     // NOTE: Only allow ASCII printable characters
     if (key >= 32 && key <= 126) {
       data->pin[data->curr_index] = key;
@@ -50,6 +86,20 @@ void handle_controls(PinData *data) {
     return;
   }
 }
+/*
+ * @brief Thread handler function that is looking for private key every second
+ * @param data_ptr Pointer to PinData structure that acts like application context
+ */
+int generate_key(void *data_ptr) {
+  isGenerating = true;
+
+  PinData *data = (PinData *)data_ptr;
+  generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
+
+  isGenerating = false;
+  hasGenerated = true;
+  return 0;
+}
 
 /**
  * @brief Detects if button was clicked and tries to generate RSA key pair
@@ -58,13 +108,20 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
   PinData *data = (PinData *)user_data;
 
   if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME) {
-    if (data->curr_index > 0) {
-      generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
-      printf("Created RSA key pair with PIN: %s\n", data->pin);
+    if (isGenerating) {
       return;
     }
 
-    printf("PIN is too short\n");
+    hasGenerated = false;
+
+    if (data->curr_index == 0) {
+      isTooShort = true;
+      return;
+    }
+
+    thrd_t thread;
+    thrd_create(&thread, generate_key, data);
+    thrd_detach(thread);
   }
 }
 
@@ -101,10 +158,22 @@ int main() {
       CLAY({.id = CLAY_ID("CreateButton"),
             .layout = {.padding = {12, 16, 16, 12}},
             .cornerRadius = CLAY_CORNER_RADIUS(4),
-            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_HOVER : COLOR_BUTTON_BG}) {
+            .backgroundColor = isGenerating     ? COLOR_BUTTON_DISABLED
+                               : Clay_Hovered() ? COLOR_BUTTON_HOVER
+                                                : COLOR_BUTTON_BG}) {
         Clay_OnHover(handleCreateButtonInteraction, (intptr_t)&data);
         CLAY_TEXT(CLAY_STRING("Generate RSA key pair"), CLAY_TEXT_CONFIG({.fontSize = 36, .textColor = COLOR_WHITE}));
       }
+
+      if (isGenerating)
+        CLAY_TEXT(CLAY_STRING("Generating keys..."), CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_WHITE}));
+      else if (hasGenerated)
+        CLAY_TEXT(CLAY_STRING("Successfully generated RSA key pair!"),
+                  CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_SUCCESS}));
+      else if (isTooShort)
+        CLAY_TEXT(CLAY_STRING("PIN is too short"), CLAY_TEXT_CONFIG({.fontSize = 32, .textColor = COLOR_WARNING}));
+      else
+        CLAY_TEXT(CLAY_STRING(" "), CLAY_TEXT_CONFIG({.fontSize = 32}));
     }
 
     Clay_RenderCommandArray renderCommands = Clay_EndLayout();
