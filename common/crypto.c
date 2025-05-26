@@ -448,6 +448,7 @@ uint8_t verify_pdf_signature(const char *pdf_path, const char *public_key_path) 
   compute_pdf_hash(pdf_file, hash, range[1]);
   fclose(pdf_file);
 
+  // hell yeah
   uint8_t has_verified = verify_hash(hash, public_key_path, signature);
   if (has_verified == 0)
     return 0;

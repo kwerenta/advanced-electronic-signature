@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(advanced-electronic-signature)
 
+include(FetchContent)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 11)
 
@@ -8,7 +10,6 @@ set(CMAKE_C_STANDARD 11)
 set(RAYLIB_VERSION 5.5)
 find_package(raylib ${RAYLIB_VERSION} QUIET) 
 if (NOT raylib_FOUND)
-  include(FetchContent)
   FetchContent_Declare(
     raylib
     DOWNLOAD_EXTRACT_TIMESTAMP OFF
@@ -21,6 +22,13 @@ if (NOT raylib_FOUND)
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   endif()
 endif()
+
+FetchContent_Declare(
+    tinycthread
+    DOWNLOAD_EXTRACT_TIMESTAMP OFF
+    URL https://github.com/tinycthread/tinycthread/archive/master.tar.gz
+)
+FetchContent_MakeAvailable(tinycthread)
 
 add_subdirectory(common)
 
