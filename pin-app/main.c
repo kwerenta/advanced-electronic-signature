@@ -99,8 +99,13 @@ void handle_controls(PinData *data) {
 int generate_key(void *data_ptr) {
   isGenerating = true;
 
+  char private_key_path[256];
+  char public_key_path[256];
+  snprintf(private_key_path, 256, "%s/%s", path, "encrypted_private_key.key");
+  snprintf(public_key_path, 256, "%s/%s", path, "public_key.pub");
+
   PinData *data = (PinData *)data_ptr;
-  generate_encrypted_RSA_keypair(data->pin, "encrypted_private_key.key", "public_key.pub");
+  generate_encrypted_RSA_keypair(data->pin, private_key_path, public_key_path);
 
   isGenerating = false;
   hasGenerated = true;
@@ -128,11 +133,6 @@ void handleCreateButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_i
     nfdresult_t res = NFD_PickFolder(NULL, &path);
     if (res != NFD_OKAY)
       return;
-
-    char private_key_path[128];
-    char public_key_path[128];
-    snprintf(private_key_path, 128, "%s/%s", path, "encrypted_private_key.key");
-    snprintf(public_key_path, 128, "%s/%s", path, "public_key.pub");
 
     thrd_t thread;
     thrd_create(&thread, generate_key, data);
