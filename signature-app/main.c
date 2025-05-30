@@ -39,8 +39,14 @@ const Clay_Color COLOR_BUTTON_PROCEED_HOVER = {11, 232, 129, 255};
 const Clay_Color COLOR_BUTTON_CHANGE_BG = {120, 120, 120, 255};
 const Clay_Color COLOR_BUTTON_CHANGE_HOVER = {150, 150, 150, 255};
 
+/**
+ * @brief Represents possible operation status
+ */
 typedef enum { FAILURE = 0, SUCCESS = 1, NONE = 2 } OperationStatus;
 
+/**
+ * @brief Represents modes in which the app can operate
+ */
 typedef enum { MODE_INITIAL, MODE_SIGN, MODE_VERIFY } AppMode;
 
 /**
@@ -59,7 +65,7 @@ typedef struct {
 
 /**
  * @brief Handles PIN input using keyboard
- * @param ctx Application context
+ * @param ctx Pointer to the application's context
  */
 void handle_controls(Context *ctx) {
 
@@ -89,6 +95,11 @@ void handle_controls(Context *ctx) {
   }
 }
 
+/**
+ * @brief Wrapper for loading and decrypting private key and signing PDF file
+ * @param ctx Pointer to the application's context
+ * @return Sign status
+ */
 uint8_t sign(Context *ctx) {
   uint8_t *private_key = load_encrypted_private_key(ctx->pin_data.pin, ctx->sign_key_file);
 
@@ -104,6 +115,11 @@ uint8_t sign(Context *ctx) {
   return 1;
 }
 
+/**
+ * @brief Wrapper for signature verification function
+ * @param ctx Pointer to the application's context
+ * @return Verification status
+ */
 uint8_t verify(Context *ctx) { return verify_pdf_signature(ctx->pdf_file, ctx->verify_key_file); }
 
 /**
@@ -391,7 +407,7 @@ void layout_verify(Context *ctx) {
   }
 }
 
-/*
+/**
  * @brief Thread handler function that is looking for private key every second
  * @param data Pointer to the application's context
  */

@@ -58,7 +58,9 @@ bool hasGenerated = false;
  * @brief Bool indicating wheter PIN is too short
  */
 bool isTooShort = false;
-
+/**
+ * @brief Path to where the generated keys will be written
+ */
 nfdchar_t *path = NULL;
 
 /**
@@ -92,7 +94,7 @@ void handle_controls(PinData *data) {
     return;
   }
 }
-/*
+/**
  * @brief Thread handler function that is looking for private key every second
  * @param data_ptr Pointer to PinData structure that acts like application context
  */
