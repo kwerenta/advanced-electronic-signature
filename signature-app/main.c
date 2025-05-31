@@ -27,20 +27,44 @@
 #define SUCCESS_TEXT_CONFIG {.fontSize = 26, .textColor = {11, 232, 129, 255}}
 #define FAILURE_TEXT_CONFIG {.fontSize = 26, .textColor = {218, 44, 56, 255}}
 
-const Clay_Color COLOR_LIGHT = {224, 215, 210, 255};
-const Clay_Color COLOR_RED = {168, 66, 28, 255};
-const Clay_Color COLOR_ORANGE = {225, 138, 50, 255};
+/**
+ * @brief Color used for background
+ */
 const Clay_Color COLOR_BACKGROUND = {72, 84, 96, 255};
 
+/**
+ * @brief Color for cancel button background
+ */
 const Clay_Color COLOR_BUTTON_CANCEL_BG = {218, 44, 56, 255};
+/**
+ * @brief Color for cancel button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_CANCEL_HOVER = {224, 82, 91, 255};
+/**
+ * @brief Color for proceed button background
+ */
 const Clay_Color COLOR_BUTTON_PROCEED_BG = {5, 196, 107, 255};
+/**
+ * @brief Color for proceed button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_PROCEED_HOVER = {11, 232, 129, 255};
+/**
+ * @brief Color for change button background
+ */
 const Clay_Color COLOR_BUTTON_CHANGE_BG = {120, 120, 120, 255};
+/**
+ * @brief Color for change button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_CHANGE_HOVER = {150, 150, 150, 255};
 
+/**
+ * @brief Represents possible operation status
+ */
 typedef enum { FAILURE = 0, SUCCESS = 1, NONE = 2 } OperationStatus;
 
+/**
+ * @brief Represents modes in which the app can operate
+ */
 typedef enum { MODE_INITIAL, MODE_SIGN, MODE_VERIFY } AppMode;
 
 /**
@@ -59,7 +83,7 @@ typedef struct {
 
 /**
  * @brief Handles PIN input using keyboard
- * @param ctx Application context
+ * @param ctx Pointer to the application's context
  */
 void handle_controls(Context *ctx) {
 
@@ -89,6 +113,11 @@ void handle_controls(Context *ctx) {
   }
 }
 
+/**
+ * @brief Wrapper for loading and decrypting private key and signing PDF file
+ * @param ctx Pointer to the application's context
+ * @return Sign status
+ */
 uint8_t sign(Context *ctx) {
   uint8_t *private_key = load_encrypted_private_key(ctx->pin_data.pin, ctx->sign_key_file);
 
@@ -104,6 +133,11 @@ uint8_t sign(Context *ctx) {
   return 1;
 }
 
+/**
+ * @brief Wrapper for signature verification function
+ * @param ctx Pointer to the application's context
+ * @return Verification status
+ */
 uint8_t verify(Context *ctx) { return verify_pdf_signature(ctx->pdf_file, ctx->verify_key_file); }
 
 /**
@@ -391,7 +425,7 @@ void layout_verify(Context *ctx) {
   }
 }
 
-/*
+/**
  * @brief Thread handler function that is looking for private key every second
  * @param data Pointer to the application's context
  */
