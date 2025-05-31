@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <windows.h>
 
+/**
+ * @brief Searches for private key file in removable drives on Windows
+ * @param[out] key_file_path Buffer where the path to the found file will be stored
+ */
 uint8_t find_private_key(char *key_file_path) {
   DWORD drives = GetLogicalDrives();
   if (drives == 0) {

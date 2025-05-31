@@ -46,6 +46,10 @@ uint8_t __find_private_key(const char *path, char *key_file_path) {
  * Technically, UNIX version of this function returns almost all mounted volumes because it is impossible to reliably
  * detect wheter volume is removeable
  */
+ /**
+  * @brief Searches for private key file in various directories depending on operating system
+  * @param[out] out_file Buffer where the path to the found file will be stored
+  */
 uint8_t find_private_key(char *out_file) {
 #ifdef __APPLE__
   return __find_private_key("/Volumes/", out_file);
