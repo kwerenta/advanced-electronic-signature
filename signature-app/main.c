@@ -27,16 +27,34 @@
 #define SUCCESS_TEXT_CONFIG {.fontSize = 26, .textColor = {11, 232, 129, 255}}
 #define FAILURE_TEXT_CONFIG {.fontSize = 26, .textColor = {218, 44, 56, 255}}
 
-const Clay_Color COLOR_LIGHT = {224, 215, 210, 255};
-const Clay_Color COLOR_RED = {168, 66, 28, 255};
-const Clay_Color COLOR_ORANGE = {225, 138, 50, 255};
+/**
+ * @brief Color used for background
+ */
 const Clay_Color COLOR_BACKGROUND = {72, 84, 96, 255};
 
+/**
+ * @brief Color for cancel button background
+ */
 const Clay_Color COLOR_BUTTON_CANCEL_BG = {218, 44, 56, 255};
+/**
+ * @brief Color for cancel button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_CANCEL_HOVER = {224, 82, 91, 255};
+/**
+ * @brief Color for proceed button background
+ */
 const Clay_Color COLOR_BUTTON_PROCEED_BG = {5, 196, 107, 255};
+/**
+ * @brief Color for proceed button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_PROCEED_HOVER = {11, 232, 129, 255};
+/**
+ * @brief Color for change button background
+ */
 const Clay_Color COLOR_BUTTON_CHANGE_BG = {120, 120, 120, 255};
+/**
+ * @brief Color for change button background when it is hovered over
+ */
 const Clay_Color COLOR_BUTTON_CHANGE_HOVER = {150, 150, 150, 255};
 
 /**

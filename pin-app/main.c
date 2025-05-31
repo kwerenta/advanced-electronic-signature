@@ -30,7 +30,7 @@ const Clay_Color COLOR_WHITE = {255, 255, 255, 255};
  */
 const Clay_Color COLOR_BUTTON_BG = {5, 196, 107, 255};
 /**
- * @brief Color for button background when it is hovered
+ * @brief Color for button background when it is hovered over
  */
 const Clay_Color COLOR_BUTTON_HOVER = {11, 232, 129, 255};
 /**
