@@ -17,8 +17,50 @@
 #include <string.h>
 
 /**
- * There are some security concerns because the IV is based on the PIN. Generating IV randomly would fix the issue.
+ * @brief Internal function that is used for destroying context created in generate_iv() function
+ * @param entropy Entropy context
+ * @param ctr_drbg CTR drbg context
  */
+void free_iv_context(mbedtls_entropy_context *entropy, mbedtls_ctr_drbg_context *ctr_drbg) {
+  mbedtls_entropy_free(entropy);
+  mbedtls_ctr_drbg_free(ctr_drbg);
+}
+
+/**
+ * @brief Generates random initialization vector using CRT-DRBG module
+ * @param[out] iv Buffer where the generated IV will be stored
+ * @retval 0 On success
+ * @retval MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED or MBEDTLS_ERR_CTR_DRBG_REQUEST_TOO_BIG On failure
+ */
+int generate_iv(uint8_t *iv) {
+  mbedtls_entropy_context entropy = {0};
+  mbedtls_ctr_drbg_context ctr_drbg = {0};
+
+  mbedtls_entropy_init(&entropy);
+  mbedtls_ctr_drbg_init(&ctr_drbg);
+
+  const char *pers = "iv_gen";
+
+  int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t*)pers, strlen(pers));
+  if (ret != 0) {
+    free_iv_context(&entropy, &ctr_drbg);
+    perror("CTR-DRBG Error while generating IV");
+    return ret;
+  }
+
+  ret = mbedtls_ctr_drbg_random(&ctr_drbg, iv, AES_BLOCK_SIZE);
+  if (ret != 0) {
+    free_iv_context(&entropy, &ctr_drbg);
+    perror("CTR-DRBG Error while generating IV");
+    return ret;
+  }
+
+  free_iv_context(&entropy, &ctr_drbg);
+
+  return 0;
+}
+
+
 int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   psa_status_t status = psa_crypto_init();
   if (status != PSA_SUCCESS) {
@@ -50,11 +92,14 @@ int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   // First 32 bytes for the key
   memcpy(key, hash, AES_256_KEY_SIZE);
 
-  // Last 16 bytes for the IV
-  memcpy(iv, hash + AES_256_KEY_SIZE - AES_BLOCK_SIZE, AES_BLOCK_SIZE);
-
   psa_hash_abort(&operation);
   mbedtls_psa_crypto_free();
+
+  int ret = generate_iv(iv);
+  if (ret != 0) {
+    psa_hash_abort(&operation);
+    return status;
+  }
 
   return 0;
 }
@@ -144,11 +189,7 @@ void free_keygen_context(mbedtls_pk_context *pk, mbedtls_entropy_context *entrop
   mbedtls_ctr_drbg_free(ctr_drbg);
 }
 
-/**
- * This function adds Initialization Vector at the beginning of encrypted private key file, but it isn't neccessary with
- * current implementation of derive_key_iv(). Either it should be removed or derive_key_iv() function should be updated
- * in the future.
- */
+
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
   uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
   int ret = derive_key_iv(pin, key, iv);
