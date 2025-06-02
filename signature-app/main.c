@@ -402,6 +402,16 @@ void layout_verify(Context *ctx) {
       CLAY_TEXT(((Clay_String){.chars = ctx->verify_key_file, .length = key_len}),
                 CLAY_TEXT_CONFIG(DEFAULT_TEXT_CONFIG));
 
+      CLAY({.id = CLAY_ID("ChangePublicKeyButton"),
+            .layout = {.padding = {12, 16, 16, 12},
+                       .sizing = {CLAY_SIZING_PERCENT(0.25)},
+                       .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+            .backgroundColor = Clay_Hovered() ? COLOR_BUTTON_CHANGE_HOVER : COLOR_BUTTON_CHANGE_BG}) {
+        Clay_OnHover(handleBrowsePubKeyButtonInteraction, (intptr_t)ctx);
+        CLAY_TEXT(CLAY_STRING("Change public key"), CLAY_TEXT_CONFIG(BUTTON_TEXT_CONFIG));
+      }
+
       CLAY({.id = CLAY_ID("ConfirmVerifyButton"),
             .layout = {.padding = {12, 16, 16, 12},
                        .sizing = {CLAY_SIZING_PERCENT(0.25)},
