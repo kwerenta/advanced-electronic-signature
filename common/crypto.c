@@ -41,7 +41,7 @@ int generate_iv(uint8_t *iv) {
 
   const char *pers = "iv_gen";
 
-  int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t*)pers, strlen(pers));
+  int ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const uint8_t *)pers, strlen(pers));
   if (ret != 0) {
     free_iv_context(&entropy, &ctr_drbg);
     perror("CTR-DRBG Error while generating IV");
@@ -59,7 +59,6 @@ int generate_iv(uint8_t *iv) {
 
   return 0;
 }
-
 
 int derive_key_iv(const char *pin, uint8_t *key, uint8_t *iv) {
   psa_status_t status = psa_crypto_init();
@@ -188,7 +187,6 @@ void free_keygen_context(mbedtls_pk_context *pk, mbedtls_entropy_context *entrop
   mbedtls_entropy_free(entropy);
   mbedtls_ctr_drbg_free(ctr_drbg);
 }
-
 
 void generate_encrypted_RSA_keypair(const char *pin, const char *private_key_file, const char *public_key_file) {
   uint8_t key[AES_256_KEY_SIZE], iv[AES_BLOCK_SIZE];
@@ -381,6 +379,12 @@ void sign_hash(const uint8_t *hash, const uint8_t *private_key, uint8_t *sign) {
   free_keygen_context(&pk, &entropy, &ctr_drbg);
 }
 
+/**
+ * @brief Verifies provided hash and signature using public key
+ * @param[in] hash Computed document hash that will be verified
+ * @param[in] public_key_path Path to public key that will be used to hash verification
+ * @param[in] signature Hash read from PDF file
+ */
 uint8_t verify_hash(const uint8_t *hash, const char *public_key_path, const uint8_t *signature) {
   mbedtls_pk_context pk;
   mbedtls_pk_init(&pk);
